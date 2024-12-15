@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/akamensky/argparse"
 	"github.com/dustin/go-humanize"
 )
 
@@ -83,7 +84,7 @@ func getPercentile(values_ []float64, percentile int) float64 {
 	return values[index]
 }
 
-func analyzeNginxLog(r io.Reader) {
+func parseLogRecords(r io.Reader) map[string][]LogRecord {
 	scanner := bufio.NewScanner(r)
 
 	logRecords := map[string][]LogRecord{}
@@ -113,6 +114,10 @@ func analyzeNginxLog(r io.Reader) {
 		})
 	}
 
+	return logRecords
+}
+
+func analyzeSummary(logRecords map[string][]LogRecord) []SummaryRecord {
 	summary := []SummaryRecord{}
 	for path, records := range logRecords {
 		requestTimes := []float64{}
@@ -167,6 +172,21 @@ func analyzeNginxLog(r io.Reader) {
 		})
 	}
 
+	return summary
+}
+
+func analyzeNginxLog(r io.Reader, prev io.Reader) {
+	summary := analyzeSummary(parseLogRecords(r))
+
+	prevSummary := map[string]SummaryRecord{}
+	if prev != nil {
+		sm := analyzeSummary(parseLogRecords(prev))
+
+		for _, record := range sm {
+			prevSummary[record.Request] = record
+		}
+	}
+
 	slices.SortStableFunc(summary, func(a, b SummaryRecord) int {
 		return int(b.Total - a.Total)
 	})
@@ -195,10 +215,27 @@ func analyzeNginxLog(r io.Reader) {
 	})
 
 	for _, record := range summary {
+		prevRecord, ok := prevSummary[record.Request]
+
+		count := strconv.Itoa(record.Count)
+		if ok {
+			count += fmt.Sprintf(" (%+d%%)", (record.Count-prevRecord.Count)*100/prevRecord.Count)
+		}
+
+		total := fmt.Sprintf("%.3f", record.Total)
+		if ok {
+			total += fmt.Sprintf(" (%+d%%)", int((record.Total-prevRecord.Total)*100/prevRecord.Total))
+		}
+
+		mean := fmt.Sprintf("%.4f", record.Mean)
+		if ok {
+			mean += fmt.Sprintf(" (%+d%%)", int((record.Mean-prevRecord.Mean)*100/prevRecord.Mean))
+		}
+
 		table = append(table, []string{
-			strconv.Itoa(record.Count),
-			fmt.Sprintf("%.3f", record.Total),
-			fmt.Sprintf("%.4f", record.Mean),
+			count,
+			total,
+			mean,
 			fmt.Sprintf("%.4f", record.Stddev),
 			fmt.Sprintf("%.3f", record.Min),
 			fmt.Sprintf("%.3f", record.P50),
@@ -246,17 +283,30 @@ func analyzeNginxLog(r io.Reader) {
 }
 
 func main() {
-	args := os.Args
-	if len(args) < 2 {
-		fmt.Println("Usage: akari <file>")
-		os.Exit(0)
+	parser := argparse.NewParser("akari", "Log analyzer")
+
+	prev := parser.String("p", "prev", &argparse.Options{Required: false, Help: "Previous log file"})
+	file := parser.StringPositional(nil)
+
+	err := parser.Parse(os.Args)
+	if err != nil {
+		fmt.Print(parser.Usage(err))
 	}
 
-	file := args[1]
-	f, err := os.Open(file)
+	var prevFile *os.File
+	if prev != nil {
+		p, err := os.Open(*prev)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		prevFile = p
+	}
+
+	logFile, err := os.Open(*file)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	analyzeNginxLog(f)
+	analyzeNginxLog(logFile, prevFile)
 }
