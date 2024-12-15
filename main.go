@@ -217,7 +217,11 @@ func analyzeNginxLog(r io.Reader, prev io.Reader) {
 		"Request",
 	})
 
-	for _, record := range summary {
+	for j, record := range summary {
+		if j > 100 {
+			break
+		}
+
 		prevRecord, ok := prevSummary[record.Request]
 
 		countDiff := ""
