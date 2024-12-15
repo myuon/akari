@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+
+	"github.com/dustin/go-humanize"
 )
 
 var (
@@ -208,10 +210,10 @@ func analyzeNginxLog(r io.Reader) {
 			strconv.Itoa(record.Status3xx),
 			strconv.Itoa(record.Status4xx),
 			strconv.Itoa(record.Status5xx),
-			strconv.Itoa(record.TotalBytes),
-			strconv.Itoa(record.MinBytes),
-			strconv.Itoa(record.MeanBytes),
-			strconv.Itoa(record.MaxBytes),
+			humanize.Bytes(uint64(record.TotalBytes)),
+			humanize.Bytes(uint64(record.MinBytes)),
+			humanize.Bytes(uint64(record.MeanBytes)),
+			humanize.Bytes(uint64(record.MaxBytes)),
 			record.Request,
 		})
 	}
