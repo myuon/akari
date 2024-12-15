@@ -194,8 +194,11 @@ func analyzeNginxLog(r io.Reader, prev io.Reader) {
 	table := [][]string{}
 	table = append(table, []string{
 		"Count",
+		"(diff)",
 		"Total",
+		"(diff)",
 		"Mean",
+		"(diff)",
 		"Stddev",
 		"Min",
 		"P50",
@@ -217,25 +220,28 @@ func analyzeNginxLog(r io.Reader, prev io.Reader) {
 	for _, record := range summary {
 		prevRecord, ok := prevSummary[record.Request]
 
-		count := strconv.Itoa(record.Count)
+		countDiff := ""
 		if ok {
-			count += fmt.Sprintf(" (%+d%%)", (record.Count-prevRecord.Count)*100/prevRecord.Count)
+			countDiff = fmt.Sprintf("(%+d%%)", (record.Count-prevRecord.Count)*100/prevRecord.Count)
 		}
 
-		total := fmt.Sprintf("%.3f", record.Total)
+		totalDiff := ""
 		if ok {
-			total += fmt.Sprintf(" (%+d%%)", int((record.Total-prevRecord.Total)*100/prevRecord.Total))
+			totalDiff = fmt.Sprintf("(%+d%%)", int((record.Total-prevRecord.Total)*100/prevRecord.Total))
 		}
 
-		mean := fmt.Sprintf("%.4f", record.Mean)
+		meanDiff := ""
 		if ok {
-			mean += fmt.Sprintf(" (%+d%%)", int((record.Mean-prevRecord.Mean)*100/prevRecord.Mean))
+			meanDiff = fmt.Sprintf("(%+d%%)", int((record.Mean-prevRecord.Mean)*100/prevRecord.Mean))
 		}
 
 		table = append(table, []string{
-			count,
-			total,
-			mean,
+			strconv.Itoa(record.Count),
+			countDiff,
+			fmt.Sprintf("%.3f", record.Total),
+			totalDiff,
+			fmt.Sprintf("%.4f", record.Mean),
+			meanDiff,
 			fmt.Sprintf("%.4f", record.Stddev),
 			fmt.Sprintf("%.3f", record.Min),
 			fmt.Sprintf("%.3f", record.P50),
@@ -269,7 +275,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader) {
 
 	for _, row := range table {
 		for i, cell := range row {
-			if i == 18 {
+			if i == 1 || i == 3 || i == 5 || i == 21 {
 				fmt.Printf("%-*s", widths[i], cell)
 			} else {
 				fmt.Printf("%*s", widths[i], cell)
