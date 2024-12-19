@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/akamensky/argparse"
 	"github.com/dustin/go-humanize"
@@ -109,6 +110,18 @@ func parseLogRecords(r io.Reader) map[string][]LogRecord {
 		}
 
 		request = ulidLike.ReplaceAllLiteralString(request, "[ulid]")
+
+		if strings.Contains(request, "?") {
+			path := strings.Split(request, "?")[0]
+
+			masked := []string{}
+			kvs := strings.Split(strings.Split(request, "?")[1], "&")
+			for _, kv := range kvs {
+				masked = append(masked, fmt.Sprintf("%s=*", strings.Split(kv, "=")[0]))
+			}
+
+			request = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
+		}
 
 		logRecords[request] = append(logRecords[request], LogRecord{
 			Status:       status,
