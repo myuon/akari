@@ -215,7 +215,13 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	}
 
 	slices.SortStableFunc(summary, func(a, b SummaryRecord) int {
-		return int(b.Total - a.Total)
+		if a.Total > b.Total {
+			return -1
+		} else if a.Total < b.Total {
+			return 1
+		} else {
+			return strings.Compare(a.Request, b.Request)
+		}
 	})
 
 	table := [][]string{}
