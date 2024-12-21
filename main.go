@@ -296,117 +296,94 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	data := akari.TableData{
 		Columns: []akari.TableColumn{
 			{
-				Index:     0,
 				Name:      "Count",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     1,
 				Name:      "(diff)",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
 			{
-				Index:     2,
 				Name:      "Total",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     3,
 				Name:      "(diff)",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
 			{
-				Index:     4,
 				Name:      "Mean",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     5,
 				Name:      "(diff)",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
 			{
-				Index:     6,
 				Name:      "Stddev",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     7,
 				Name:      "Min",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     8,
 				Name:      "P50",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     9,
 				Name:      "P90",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     10,
 				Name:      "P95",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     11,
 				Name:      "P99",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     12,
 				Name:      "Max",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     13,
 				Name:      "2xx",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     14,
 				Name:      "3xx",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     15,
 				Name:      "4xx",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     16,
 				Name:      "5xx",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     17,
 				Name:      "TotalBs",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     18,
 				Name:      "MinBs",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     19,
 				Name:      "MeanBs",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     20,
 				Name:      "MaxBs",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     21,
 				Name:      "Method",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
 			{
-				Index:     22,
 				Name:      "Path",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
@@ -510,17 +487,14 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 	data := akari.TableData{
 		Columns: []akari.TableColumn{
 			{
-				Index:     0,
 				Name:      "Count",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     1,
 				Name:      "Total",
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
-				Index:     2,
 				Name:      "Query",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},

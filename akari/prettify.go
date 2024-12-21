@@ -11,7 +11,6 @@ const (
 )
 
 type TableColumn struct {
-	Index     int
 	Name      string
 	Alignment string
 }
@@ -23,6 +22,10 @@ type TableData struct {
 
 func (d TableData) WriteInText(w io.Writer) {
 	table := [][]string{}
+	columnNameIndex := map[string]int{}
+	for i, column := range d.Columns {
+		columnNameIndex[column.Name] = i
+	}
 
 	headers := []string{}
 	widths := []int{}
@@ -36,8 +39,9 @@ func (d TableData) WriteInText(w io.Writer) {
 	for _, row := range d.Rows {
 		tableRow := []string{}
 		for _, column := range d.Columns {
-			tableRow = append(tableRow, row[column.Index])
-			widths[column.Index] = max(widths[column.Index], len(row[column.Index]))
+			i := columnNameIndex[column.Name]
+			tableRow = append(tableRow, row[i])
+			widths[i] = max(widths[i], len(row[i]))
 		}
 
 		table = append(table, tableRow)
@@ -45,8 +49,9 @@ func (d TableData) WriteInText(w io.Writer) {
 
 	rightAligned := map[int]bool{}
 	for _, column := range d.Columns {
+		i := columnNameIndex[column.Name]
 		if column.Alignment == TableColumnAlignmentRight {
-			rightAligned[column.Index] = true
+			rightAligned[i] = true
 		}
 	}
 
