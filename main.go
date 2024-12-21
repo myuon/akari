@@ -344,6 +344,126 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	}
 }
 
+type DbLogRecord struct {
+	Timestamp time.Time
+	Elapsed   float64
+	Query     string
+}
+
+func parseDbLogRecords(r io.Reader) map[string][]DbLogRecord {
+	scanner := bufio.NewScanner(r)
+
+	logRecords := map[string][]DbLogRecord{}
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		tokens := dbQueryLoggerRegexp.FindStringSubmatch(line)
+
+		nanoSec, err := strconv.ParseInt(tokens[1], 10, 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+		timestamp := time.Unix(nanoSec/1e9, nanoSec%1e9).Local()
+
+		elapsedInNano, err := strconv.Atoi(tokens[2])
+		if err != nil {
+			log.Fatal(err)
+		}
+		elapsed := float64(elapsedInNano) / 1e6
+
+		query := tokens[3]
+
+		logRecords[query] = append(logRecords[query], DbLogRecord{
+			Timestamp: timestamp,
+			Elapsed:   elapsed,
+			Query:     query,
+		})
+	}
+
+	return logRecords
+}
+
+type DbSummaryRecord struct {
+	Count int
+	Total float64
+	Query string
+}
+
+func analyzeDbSummary(logRecords map[string][]DbLogRecord) []DbSummaryRecord {
+	summary := []DbSummaryRecord{}
+	for query, records := range logRecords {
+		elapsedTimes := []float64{}
+		for _, record := range records {
+			elapsedTimes = append(elapsedTimes, record.Elapsed)
+		}
+
+		totalElapsed := getSum(elapsedTimes)
+
+		summary = append(summary, DbSummaryRecord{
+			Count: len(records),
+			Total: totalElapsed,
+			Query: query,
+		})
+	}
+
+	return summary
+}
+
+func analyzeDbQueryLog(r io.Reader, w io.Writer) {
+	summary := analyzeDbSummary(parseDbLogRecords(r))
+
+	slices.SortStableFunc(summary, func(a, b DbSummaryRecord) int {
+		if a.Total > b.Total {
+			return -1
+		} else if a.Total < b.Total {
+			return 1
+		} else {
+			return strings.Compare(a.Query, b.Query)
+		}
+	})
+
+	table := [][]string{}
+	table = append(table, []string{
+		"Count",
+		"Total",
+		"Query",
+	})
+
+	for j, record := range summary {
+		if j > 100 {
+			break
+		}
+
+		table = append(table, []string{
+			strconv.Itoa(record.Count),
+			fmt.Sprintf("%.3f", record.Total),
+			record.Query,
+		})
+	}
+
+	widths := []int{}
+	for _, row := range table {
+		for i, cell := range row {
+			if i >= len(widths) {
+				widths = append(widths, 0)
+			}
+			if len(cell) > widths[i] {
+				widths[i] = len(cell)
+			}
+		}
+	}
+
+	for _, row := range table {
+		for i, cell := range row {
+			fmt.Fprintf(w, "%-*s", widths[i], cell)
+			if i < len(row)-1 {
+				fmt.Fprint(w, "  ")
+			}
+		}
+		fmt.Fprintln(w)
+	}
+}
+
 var (
 	templateFiles = template.Must(template.ParseGlob("templates/*.html"))
 	rootDir       = "."
@@ -510,6 +630,11 @@ func rawFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewFileHandler(w http.ResponseWriter, r *http.Request) {
+	logType := r.URL.Query().Get("type")
+	if logType == "" {
+		logType = "nginx"
+	}
+
 	filePath := r.URL.Query().Get("file")
 	if filePath == "" {
 		http.Error(w, "File not specified", http.StatusBadRequest)
@@ -530,7 +655,13 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-	analyzeNginxLog(logFile, prevLogFile, w)
+	if logType == "nginx" {
+		analyzeNginxLog(logFile, prevLogFile, w)
+	} else if logType == "dbquery" {
+		analyzeDbQueryLog(logFile, w)
+	} else {
+		http.Error(w, "Unknown log type", http.StatusBadRequest)
+	}
 }
 
 func main() {
