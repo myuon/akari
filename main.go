@@ -51,19 +51,20 @@ type SummaryRecord struct {
 	MinBytes   int
 	MeanBytes  int
 	MaxBytes   int
-	Request    string
-	Method     string
-	Path       string
+	Key        LogRecordKey
 }
 
 type LogRecord struct {
 	Status       int
 	Bytes        int
 	ResponseTime float64
-	Method       string
-	Path         string
-	Protocol     string
 	UserAgent    string
+}
+
+type LogRecordKey struct {
+	Protocol string
+	Method   string
+	Url      string
 }
 
 func getSum[T int | float64](values []T) T {
@@ -100,17 +101,17 @@ func getPercentile(values_ []float64, percentile int) float64 {
 	return values[index]
 }
 
-func parseLogRecords(r io.Reader) map[string][]LogRecord {
+func parseLogRecords(r io.Reader) map[LogRecordKey][]LogRecord {
 	scanner := bufio.NewScanner(r)
 
-	logRecords := map[string][]LogRecord{}
+	logRecords := map[LogRecordKey][]LogRecord{}
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		tokens := parse(line)
 
 		method := tokens[4]
-		path := tokens[5]
+		url := tokens[5]
 		protocol := tokens[6]
 		status, err := strconv.Atoi(tokens[7])
 		if err != nil {
@@ -126,29 +127,32 @@ func parseLogRecords(r io.Reader) map[string][]LogRecord {
 			log.Fatal(err)
 		}
 
-		request := fmt.Sprintf("%v %v", method, path)
-		request = ulidLike.ReplaceAllLiteralString(request, "[ulid]")
-		request = uuidLike.ReplaceAllLiteralString(request, "[uuid]")
+		url = ulidLike.ReplaceAllLiteralString(url, "(ulid)")
+		url = uuidLike.ReplaceAllLiteralString(url, "(uuid)")
 
-		if strings.Contains(request, "?") {
-			path := strings.Split(request, "?")[0]
+		if strings.Contains(url, "?") {
+			splitted := strings.Split(url, "?")
+			path := splitted[0]
 
 			masked := []string{}
-			kvs := strings.Split(strings.Split(request, "?")[1], "&")
+			kvs := strings.Split(splitted[1], "&")
 			for _, kv := range kvs {
 				masked = append(masked, fmt.Sprintf("%s=*", strings.Split(kv, "=")[0]))
 			}
 
-			request = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
+			url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
 		}
 
-		logRecords[request] = append(logRecords[request], LogRecord{
+		key := LogRecordKey{
+			Protocol: protocol,
+			Method:   method,
+			Url:      url,
+		}
+
+		logRecords[key] = append(logRecords[key], LogRecord{
 			Status:       status,
 			Bytes:        bytes,
 			ResponseTime: responseTime,
-			Method:       method,
-			Path:         path,
-			Protocol:     protocol,
 			UserAgent:    userAgent,
 		})
 	}
@@ -156,9 +160,9 @@ func parseLogRecords(r io.Reader) map[string][]LogRecord {
 	return logRecords
 }
 
-func analyzeSummary(logRecords map[string][]LogRecord) []SummaryRecord {
+func analyzeSummary(logRecords map[LogRecordKey][]LogRecord) []SummaryRecord {
 	summary := []SummaryRecord{}
-	for path, records := range logRecords {
+	for key, records := range logRecords {
 		requestTimes := []float64{}
 		for _, record := range records {
 			requestTimes = append(requestTimes, record.ResponseTime)
@@ -211,9 +215,7 @@ func analyzeSummary(logRecords map[string][]LogRecord) []SummaryRecord {
 			MinBytes:   slices.Min(bytesSlice),
 			MeanBytes:  getMean(bytesSlice),
 			MaxBytes:   slices.Max(bytesSlice),
-			Request:    path,
-			Method:     records[0].Method,
-			Path:       records[0].Path,
+			Key:        key,
 		})
 	}
 
@@ -223,12 +225,12 @@ func analyzeSummary(logRecords map[string][]LogRecord) []SummaryRecord {
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	summary := analyzeSummary(parseLogRecords(r))
 
-	prevSummary := map[string]SummaryRecord{}
+	prevSummary := map[LogRecordKey]SummaryRecord{}
 	if prev != nil {
 		sm := analyzeSummary(parseLogRecords(prev))
 
 		for _, record := range sm {
-			prevSummary[record.Request] = record
+			prevSummary[record.Key] = record
 		}
 	}
 
@@ -238,7 +240,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 		} else if a.Total < b.Total {
 			return 1
 		} else {
-			return strings.Compare(a.Request, b.Request)
+			return strings.Compare(a.Key.Method, b.Key.Method)
 		}
 	})
 
@@ -249,7 +251,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 			break
 		}
 
-		prevRecord, ok := prevSummary[record.Request]
+		prevRecord, ok := prevSummary[record.Key]
 
 		countDiff := ""
 		if ok {
@@ -288,8 +290,9 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 			humanize.Bytes(uint64(record.MinBytes)),
 			humanize.Bytes(uint64(record.MeanBytes)),
 			humanize.Bytes(uint64(record.MaxBytes)),
-			record.Method,
-			record.Path,
+			record.Key.Protocol,
+			record.Key.Method,
+			record.Key.Url,
 		})
 	}
 
@@ -380,11 +383,15 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 				Alignment: akari.TableColumnAlignmentRight,
 			},
 			{
+				Name:      "Protocol",
+				Alignment: akari.TableColumnAlignmentRight,
+			},
+			{
 				Name:      "Method",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
 			{
-				Name:      "Path",
+				Name:      "Url",
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
 		},
