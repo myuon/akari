@@ -172,6 +172,10 @@ func analyzeSummary(logRecords map[string][]LogRecord) []SummaryRecord {
 			bytesSlice = append(bytesSlice, record.Bytes)
 		}
 
+		if totalRequestTime < 0.001 {
+			continue
+		}
+
 		summary = append(summary, SummaryRecord{
 			Count:      len(records),
 			Total:      totalRequestTime,
