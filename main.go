@@ -32,7 +32,7 @@ func parse(line string) []string {
 	return nginxLogRegexp.FindStringSubmatch(line)
 }
 
-type SummaryRecord struct {
+type NginxSummaryRecord struct {
 	Count      int
 	Total      float64
 	Mean       float64
@@ -51,17 +51,17 @@ type SummaryRecord struct {
 	MinBytes   int
 	MeanBytes  int
 	MaxBytes   int
-	Key        LogRecordKey
+	Key        NginxLogRecordKey
 }
 
-type LogRecord struct {
+type NginxLogRecord struct {
 	Status       int
 	Bytes        int
 	ResponseTime float64
 	UserAgent    string
 }
 
-type LogRecordKey struct {
+type NginxLogRecordKey struct {
 	Protocol string
 	Method   string
 	Url      string
@@ -101,10 +101,10 @@ func getPercentile(values_ []float64, percentile int) float64 {
 	return values[index]
 }
 
-func parseLogRecords(r io.Reader) map[LogRecordKey][]LogRecord {
+func parseLogRecords(r io.Reader) map[NginxLogRecordKey][]NginxLogRecord {
 	scanner := bufio.NewScanner(r)
 
-	logRecords := map[LogRecordKey][]LogRecord{}
+	logRecords := map[NginxLogRecordKey][]NginxLogRecord{}
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -143,13 +143,13 @@ func parseLogRecords(r io.Reader) map[LogRecordKey][]LogRecord {
 			url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
 		}
 
-		key := LogRecordKey{
+		key := NginxLogRecordKey{
 			Protocol: protocol,
 			Method:   method,
 			Url:      url,
 		}
 
-		logRecords[key] = append(logRecords[key], LogRecord{
+		logRecords[key] = append(logRecords[key], NginxLogRecord{
 			Status:       status,
 			Bytes:        bytes,
 			ResponseTime: responseTime,
@@ -160,8 +160,8 @@ func parseLogRecords(r io.Reader) map[LogRecordKey][]LogRecord {
 	return logRecords
 }
 
-func analyzeSummary(logRecords map[LogRecordKey][]LogRecord) []SummaryRecord {
-	summary := []SummaryRecord{}
+func analyzeSummary(logRecords map[NginxLogRecordKey][]NginxLogRecord) []NginxSummaryRecord {
+	summary := []NginxSummaryRecord{}
 	for key, records := range logRecords {
 		requestTimes := []float64{}
 		for _, record := range records {
@@ -196,7 +196,7 @@ func analyzeSummary(logRecords map[LogRecordKey][]LogRecord) []SummaryRecord {
 			continue
 		}
 
-		summary = append(summary, SummaryRecord{
+		summary = append(summary, NginxSummaryRecord{
 			Count:      len(records),
 			Total:      totalRequestTime,
 			Mean:       totalRequestTime / float64(len(records)),
@@ -225,7 +225,7 @@ func analyzeSummary(logRecords map[LogRecordKey][]LogRecord) []SummaryRecord {
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	summary := analyzeSummary(parseLogRecords(r))
 
-	prevSummary := map[LogRecordKey]SummaryRecord{}
+	prevSummary := map[NginxLogRecordKey]NginxSummaryRecord{}
 	if prev != nil {
 		sm := analyzeSummary(parseLogRecords(prev))
 
@@ -234,7 +234,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 		}
 	}
 
-	slices.SortStableFunc(summary, func(a, b SummaryRecord) int {
+	slices.SortStableFunc(summary, func(a, b NginxSummaryRecord) int {
 		if a.Total > b.Total {
 			return -1
 		} else if a.Total < b.Total {
