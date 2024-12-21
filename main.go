@@ -147,26 +147,7 @@ func parseLogRecords(r io.Reader) akari.LogRecords {
 	}
 }
 
-type SummaryRecordColumn struct {
-	Name string
-}
-
-type SummaryRecord struct {
-	Columns []SummaryRecordColumn
-	Rows    map[string][]any
-}
-
-func (r SummaryRecord) GetIndex(key string) int {
-	for i, column := range r.Columns {
-		if column.Name == key {
-			return i
-		}
-	}
-
-	return -1
-}
-
-func analyzeSummary(logRecords akari.LogRecords) SummaryRecord {
+func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecord {
 	summary := map[string][]any{}
 	for key, records := range logRecords.Records {
 		requestTimes := []float64{}
@@ -230,8 +211,8 @@ func analyzeSummary(logRecords akari.LogRecords) SummaryRecord {
 		}
 	}
 
-	return SummaryRecord{
-		Columns: []SummaryRecordColumn{
+	return akari.SummaryRecord{
+		Columns: []akari.SummaryRecordColumn{
 			{Name: "Count"},
 			{Name: "Total"},
 			{Name: "Mean"},
@@ -261,7 +242,7 @@ func analyzeSummary(logRecords akari.LogRecords) SummaryRecord {
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	summary := analyzeSummary(parseLogRecords(r))
 
-	prevSummary := SummaryRecord{}
+	prevSummary := akari.SummaryRecord{}
 	if prev != nil {
 		sm := analyzeSummary(parseLogRecords(prev))
 
