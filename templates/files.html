@@ -15,6 +15,7 @@
 					<th>DateTime</th>
 					<th>Name</th>
 					<th>Size</th>
+					<th>LogType</th>
 					<th>Peek</th>
 				</tr>
 			</thead>
@@ -23,13 +24,10 @@
 				<tr>
 					<td>{{ .ModifiedAtString }}</td>
 					<td>
-						{{ if .IsDir }}
-						<a href="/?dir={{ .Path }}">{{ .Name }}/</a>
-						{{ else }}
-						<a href="/view?file={{ .Path }}">{{ .Name }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
-						{{ end }}
+						<a href="/view?file={{ .Path }}">{{ .Path }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
 					</td>
 					<td>{{ .SizeHuman }}</td>
+					<td>{{ .LogType }}</td>
 					<td><code>{{ .PeekString }}</code></td>
 				</tr>
 				{{ end }}

@@ -327,6 +327,7 @@ type FileData struct {
 	ModifiedAt time.Time
 	Size       int64
 	Peek       []byte
+	LogType    string
 }
 
 func (d FileData) SizeHuman() string {
@@ -353,45 +354,56 @@ type PageData struct {
 
 func listFiles(root string) ([]FileData, error) {
 	var files []FileData
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range entries {
-		fileInfo, err := entry.Info()
+	if err := filepath.WalkDir(root, func(path string, info os.DirEntry, _ error) error {
+		if info.IsDir() {
+			return nil
+		}
+
+		fileInfo, err := info.Info()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		modifiedAt := fileInfo.ModTime()
 		size := fileInfo.Size()
-		peek := make([]byte, 100)
-		if !entry.IsDir() {
-			file, err := os.Open(filepath.Join(root, entry.Name()))
-			if err != nil {
-				return nil, err
-			}
-			defer file.Close()
 
-			n, err := file.Read(peek)
-			if err != nil && err != io.EOF {
-				return nil, err
-			}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
 
-			peek = peek[:n]
-		} else {
-			peek = nil
+		line := make([]byte, 512)
+		n, err := file.Read(line)
+		if err != nil && err != io.EOF {
+			return err
+		}
+		line = line[:n]
+
+		if strings.Contains(string(line), "\n") {
+			line = []byte(strings.SplitN(string(line), "\n", 2)[0])
+		}
+
+		logType := "unknown"
+		if nginxLogRegexp.Match(line) {
+			logType = "nginx"
 		}
 
 		files = append(files, FileData{
-			Name:       entry.Name(),
-			Path:       filepath.Join(root, entry.Name()),
-			IsDir:      entry.IsDir(),
+			Name:       info.Name(),
+			Path:       path,
+			IsDir:      info.IsDir(),
 			Size:       size,
 			ModifiedAt: modifiedAt,
-			Peek:       peek,
+			Peek:       line,
+			LogType:    logType,
 		})
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
+
 	return files, nil
 }
 
