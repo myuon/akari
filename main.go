@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/md5"
 	"fmt"
 	"html/template"
 	"io"
@@ -67,6 +68,26 @@ type NginxLogRecordKey struct {
 	Url      string
 }
 
+type LogRecordColumn struct {
+	Name string
+}
+
+type LogRecords struct {
+	Columns    []LogRecordColumn
+	KeyColumns []LogRecordColumn
+	Records    map[string][][]any
+}
+
+func (r LogRecords) GetIndex(key string) int {
+	for i, column := range r.Columns {
+		if column.Name == key {
+			return i
+		}
+	}
+
+	return -1
+}
+
 func getSum[T int | float64](values []T) T {
 	total := 0.0
 	for _, value := range values {
@@ -101,10 +122,11 @@ func getPercentile(values_ []float64, percentile int) float64 {
 	return values[index]
 }
 
-func parseLogRecords(r io.Reader) map[NginxLogRecordKey][]NginxLogRecord {
+func parseLogRecords(r io.Reader) LogRecords {
 	scanner := bufio.NewScanner(r)
 
-	logRecords := map[NginxLogRecordKey][]NginxLogRecord{}
+	md5Hash := md5.New()
+	records := map[string][][]any{}
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -149,23 +171,44 @@ func parseLogRecords(r io.Reader) map[NginxLogRecordKey][]NginxLogRecord {
 			Url:      url,
 		}
 
-		logRecords[key] = append(logRecords[key], NginxLogRecord{
-			Status:       status,
-			Bytes:        bytes,
-			ResponseTime: responseTime,
-			UserAgent:    userAgent,
+		hashKey := md5Hash.Sum([]byte(fmt.Sprintf("%v", key)))
+		records[string(hashKey)] = append(records[string(hashKey)], []any{
+			status,
+			bytes,
+			responseTime,
+			userAgent,
+			protocol,
+			method,
+			url,
 		})
 	}
 
-	return logRecords
+	return LogRecords{
+		Columns: []LogRecordColumn{
+			{Name: "Status"},
+			{Name: "Bytes"},
+			{Name: "ResponseTime"},
+			{Name: "UserAgent"},
+			{Name: "Protocol"},
+			{Name: "Method"},
+			{Name: "Url"},
+		},
+		KeyColumns: []LogRecordColumn{
+			{Name: "Protocol"},
+			{Name: "Method"},
+			{Name: "Url"},
+		},
+		Records: records,
+	}
 }
 
-func analyzeSummary(logRecords map[NginxLogRecordKey][]NginxLogRecord) []NginxSummaryRecord {
+func analyzeSummary(logRecords LogRecords) []NginxSummaryRecord {
 	summary := []NginxSummaryRecord{}
-	for key, records := range logRecords {
+	for _, records := range logRecords.Records {
 		requestTimes := []float64{}
 		for _, record := range records {
-			requestTimes = append(requestTimes, record.ResponseTime)
+			responseTime := record[logRecords.GetIndex("ResponseTime")].(float64)
+			requestTimes = append(requestTimes, responseTime)
 		}
 
 		totalRequestTime := getSum(requestTimes)
@@ -175,21 +218,23 @@ func analyzeSummary(logRecords map[NginxLogRecordKey][]NginxLogRecord) []NginxSu
 		status4xx := 0
 		status5xx := 0
 		for _, record := range records {
+			status := record[logRecords.GetIndex("Status")].(int)
 			switch {
-			case record.Status >= 200 && record.Status < 300:
+			case status >= 200 && status < 300:
 				status2xx++
-			case record.Status >= 300 && record.Status < 400:
+			case status >= 300 && status < 400:
 				status3xx++
-			case record.Status >= 400 && record.Status < 500:
+			case status >= 400 && status < 500:
 				status4xx++
-			case record.Status >= 500 && record.Status < 600:
+			case status >= 500 && status < 600:
 				status5xx++
 			}
 		}
 
 		bytesSlice := []int{}
 		for _, record := range records {
-			bytesSlice = append(bytesSlice, record.Bytes)
+			bytes := record[logRecords.GetIndex("Bytes")].(int)
+			bytesSlice = append(bytesSlice, bytes)
 		}
 
 		if totalRequestTime < 0.001 {
@@ -215,7 +260,11 @@ func analyzeSummary(logRecords map[NginxLogRecordKey][]NginxLogRecord) []NginxSu
 			MinBytes:   slices.Min(bytesSlice),
 			MeanBytes:  getMean(bytesSlice),
 			MaxBytes:   slices.Max(bytesSlice),
-			Key:        key,
+			Key: NginxLogRecordKey{
+				Protocol: records[0][logRecords.GetIndex("Protocol")].(string),
+				Method:   records[0][logRecords.GetIndex("Method")].(string),
+				Url:      records[0][logRecords.GetIndex("Url")].(string),
+			},
 		})
 	}
 
