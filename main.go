@@ -322,7 +322,7 @@ func main() {
 	}
 
 	var prevFile *os.File
-	if prev != nil {
+	if prev != nil && *prev != "" {
 		p, err := os.Open(*prev)
 		if err != nil {
 			log.Fatal(err)
