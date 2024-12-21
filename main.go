@@ -242,33 +242,6 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 		}
 	})
 
-	table := [][]string{}
-	table = append(table, []string{
-		"Count",
-		"(diff)",
-		"Total",
-		"(diff)",
-		"Mean",
-		"(diff)",
-		"Stddev",
-		"Min",
-		"P50",
-		"P90",
-		"P95",
-		"P99",
-		"Max",
-		"2xx",
-		"3xx",
-		"4xx",
-		"5xx",
-		"TotalBs",
-		"MinBs",
-		"MeanBs",
-		"MaxBs",
-		"Method",
-		"Path",
-	})
-
 	rows := [][]string{}
 
 	for j, record := range summary {
