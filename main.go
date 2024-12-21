@@ -364,41 +364,11 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Define the template
-	tmpl := `<!DOCTYPE html>
-<html>
-<head>
-	<title>{{ .Title }}</title>
-</head>
-<body>
-	<h1>{{ .Title }}</h1>
-	<ul>
-		{{ range .Files }}
-		<li>
-			{{ if .IsDir }}
-			<a href="/?dir={{ .Path }}">{{ .Name }}/</a>
-			{{ else }}
-			<a href="/view?file={{ .Path }}" target="_blank">{{ .Name }}</a>
-			{{ end }}
-		</li>
-		{{ end }}
-	</ul>
-</body>
-</html>`
-
-	template, err := template.New("fileList").Parse(tmpl)
-	if err != nil {
-		http.Error(w, "Failed to parse template", http.StatusInternalServerError)
-		log.Println("Template parsing error:", err)
-		return
-	}
-
-	// Render the template with data
 	pageData := PageData{
 		Title: "File List",
 		Files: files,
 	}
-	err = template.Execute(w, pageData)
+	err = templateFiles.ExecuteTemplate(w, "files.html", pageData)
 	if err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		log.Println("Template execution error:", err)
@@ -413,17 +383,17 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Read the file content
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		http.Error(w, "Failed to read file", http.StatusInternalServerError)
 		log.Println("Error reading file:", err)
 		return
 	}
 
-	// Display the file content
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write(content)
+	if _, err := w.Write(content); err != nil {
+		slog.Error("Failed to write response", "error", err)
+	}
 }
 
 func main() {
