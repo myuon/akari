@@ -68,26 +68,6 @@ type NginxLogRecordKey struct {
 	Url      string
 }
 
-type LogRecordColumn struct {
-	Name string
-}
-
-type LogRecords struct {
-	Columns    []LogRecordColumn
-	KeyColumns []LogRecordColumn
-	Records    map[string][][]any
-}
-
-func (r LogRecords) GetIndex(key string) int {
-	for i, column := range r.Columns {
-		if column.Name == key {
-			return i
-		}
-	}
-
-	return -1
-}
-
 func getSum[T int | float64](values []T) T {
 	total := 0.0
 	for _, value := range values {
@@ -122,7 +102,7 @@ func getPercentile(values_ []float64, percentile int) float64 {
 	return values[index]
 }
 
-func parseLogRecords(r io.Reader) LogRecords {
+func parseLogRecords(r io.Reader) akari.LogRecords {
 	scanner := bufio.NewScanner(r)
 
 	md5Hash := md5.New()
@@ -165,10 +145,10 @@ func parseLogRecords(r io.Reader) LogRecords {
 			url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
 		}
 
-		key := NginxLogRecordKey{
-			Protocol: protocol,
-			Method:   method,
-			Url:      url,
+		key := []any{
+			protocol,
+			method,
+			url,
 		}
 
 		hashKey := md5Hash.Sum([]byte(fmt.Sprintf("%v", key)))
@@ -183,8 +163,8 @@ func parseLogRecords(r io.Reader) LogRecords {
 		})
 	}
 
-	return LogRecords{
-		Columns: []LogRecordColumn{
+	return akari.LogRecords{
+		Columns: []akari.LogRecordColumn{
 			{Name: "Status"},
 			{Name: "Bytes"},
 			{Name: "ResponseTime"},
@@ -193,7 +173,7 @@ func parseLogRecords(r io.Reader) LogRecords {
 			{Name: "Method"},
 			{Name: "Url"},
 		},
-		KeyColumns: []LogRecordColumn{
+		KeyColumns: []akari.LogRecordColumn{
 			{Name: "Protocol"},
 			{Name: "Method"},
 			{Name: "Url"},
@@ -202,7 +182,7 @@ func parseLogRecords(r io.Reader) LogRecords {
 	}
 }
 
-func analyzeSummary(logRecords LogRecords) []NginxSummaryRecord {
+func analyzeSummary(logRecords akari.LogRecords) []NginxSummaryRecord {
 	summary := []NginxSummaryRecord{}
 	for _, records := range logRecords.Records {
 		requestTimes := []float64{}
