@@ -21,9 +21,10 @@ import (
 )
 
 var (
-	nginxLogRegexp = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "(\S+) (\S+) ([^"]+)" (\d+) (\d+) "([^"]+)" "([^"]+)" (\S+)$`)
-	ulidLike       = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
-	uuidLike       = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+	nginxLogRegexp      = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "(\S+) (\S+) ([^"]+)" (\d+) (\d+) "([^"]+)" "([^"]+)" (\S+)$`)
+	dbQueryLoggerRegexp = regexp.MustCompile(`^([0-9]{19})\s+([0-9]+)\s+(.*)$`)
+	ulidLike            = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
+	uuidLike            = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 )
 
 func parse(line string) []string {
@@ -416,6 +417,8 @@ func listFiles(root string) ([]FileData, error) {
 		logType := "unknown"
 		if nginxLogRegexp.Match(line) {
 			logType = "nginx"
+		} else if dbQueryLoggerRegexp.Match(line) {
+			logType = "dbquery"
 		}
 
 		files = append(files, FileData{
