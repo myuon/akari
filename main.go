@@ -328,6 +328,7 @@ type FileData struct {
 	Size       int64
 	Peek       []byte
 	LogType    string
+	PrevPath   string
 }
 
 func (d FileData) SizeHuman() string {
@@ -425,6 +426,26 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		filesByType[file.LogType] = append(filesByType[file.LogType], file)
 	}
 
+	for _, files := range filesByType {
+		slices.SortFunc(files, func(a, b FileData) int {
+			if !a.ModifiedAt.Equal(b.ModifiedAt) {
+				return b.ModifiedAt.Compare(a.ModifiedAt)
+			} else {
+				return strings.Compare(b.Name, a.Name)
+			}
+		})
+	}
+
+	for _, files := range filesByType {
+		for i := range files {
+			if i == len(files)-1 {
+				continue
+			}
+
+			files[i].PrevPath = files[i+1].Path
+		}
+	}
+
 	pageData := PageData{
 		Title: "File List",
 		Files: filesByType,
@@ -469,9 +490,16 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	prevFilePath := r.URL.Query().Get("prev")
+
+	prevLogFile, err := os.Open(prevFilePath)
+	if err != nil {
+		prevLogFile = nil
+	}
+
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-	analyzeNginxLog(logFile, nil, w)
+	analyzeNginxLog(logFile, prevLogFile, w)
 }
 
 func main() {
