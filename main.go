@@ -349,7 +349,7 @@ func (d FileData) ModifiedAtString() string {
 
 type PageData struct {
 	Title string
-	Files []FileData
+	Files map[string][]FileData
 }
 
 func listFiles(root string) ([]FileData, error) {
@@ -420,9 +420,14 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filesByType := map[string][]FileData{}
+	for _, file := range files {
+		filesByType[file.LogType] = append(filesByType[file.LogType], file)
+	}
+
 	pageData := PageData{
 		Title: "File List",
-		Files: files,
+		Files: filesByType,
 	}
 	err = templateFiles.ExecuteTemplate(w, "files.html", pageData)
 	if err != nil {
@@ -489,6 +494,11 @@ func main() {
 		http.HandleFunc("/raw", rawFileHandler)
 		http.HandleFunc("/view", viewFileHandler)
 
+		hostName := "localhost"
+		if val, ok := os.LookupEnv("HOSTNAME"); ok {
+			hostName = val
+		}
+
 		port := 8089
 		if val, ok := os.LookupEnv("PORT"); ok {
 			port, _ = strconv.Atoi(val)
@@ -496,7 +506,7 @@ func main() {
 
 		slog.Info("Starting server", "port", port, "url", fmt.Sprintf("http://localhost:%v", port))
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%v", port), nil); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf("%v:%v", hostName, port), nil); err != nil {
 			slog.Error("Failed to start server", "error", err)
 		}
 	}

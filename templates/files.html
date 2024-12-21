@@ -8,30 +8,31 @@
 </head>
 <body>
 	<h1>{{ .Title }}</h1>
-	<ul>
-		<table>
-			<thead>
-				<tr>
-					<th>DateTime</th>
-					<th>Name</th>
-					<th>Size</th>
-					<th>LogType</th>
-					<th>Peek</th>
-				</tr>
-			</thead>
-			<tbody>
-				{{ range .Files }}
-				<tr>
-					<td>{{ .ModifiedAtString }}</td>
-					<td>
-						<a href="/view?file={{ .Path }}">{{ .Path }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
-					</td>
-					<td>{{ .SizeHuman }}</td>
-					<td>{{ .LogType }}</td>
-					<td><code>{{ .PeekString }}</code></td>
-				</tr>
-				{{ end }}
-		</table>
-	</ul>
+	{{ range $key, $files := .Files }}
+	<h2>{{ $key }}</h2>
+	<table>
+		<thead>
+			<tr>
+				<th>DateTime</th>
+				<th>Name</th>
+				<th>Size</th>
+				<th>LogType</th>
+				<th>Peek</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{ range $files }}
+			<tr>
+				<td>{{ .ModifiedAtString }}</td>
+				<td>
+					<a href="/view?file={{ .Path }}">{{ .Path }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
+				</td>
+				<td>{{ .SizeHuman }}</td>
+				<td>{{ .LogType }}</td>
+				<td><code>{{ .PeekString }}</code></td>
+			</tr>
+			{{ end }}
+	</table>
+	{{ end }}
 </body>
 </html>
