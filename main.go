@@ -147,7 +147,7 @@ func parseLogRecords(r io.Reader) akari.LogRecords {
 	}
 }
 
-func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecord {
+func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 	summary := map[string][]any{}
 	for key, records := range logRecords.Records {
 		requestTimes := []float64{}
@@ -211,7 +211,7 @@ func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecord {
 		}
 	}
 
-	return akari.SummaryRecord{
+	return akari.SummaryRecords{
 		Columns: []akari.SummaryRecordColumn{
 			{Name: "Count"},
 			{Name: "Total"},
@@ -242,27 +242,16 @@ func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecord {
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	summary := analyzeSummary(parseLogRecords(r))
 
-	prevSummary := akari.SummaryRecord{}
+	prevSummary := akari.SummaryRecords{}
 	if prev != nil {
 		sm := analyzeSummary(parseLogRecords(prev))
 
 		prevSummary = sm
 	}
 
-	type SummaryRecordKeyPair struct {
-		Key    string
-		Record []any
-	}
+	summaryRecords := summary.GetKeyPairs()
 
-	summaryRecords := []SummaryRecordKeyPair{}
-	for key, record := range summary.Rows {
-		summaryRecords = append(summaryRecords, SummaryRecordKeyPair{
-			Key:    key,
-			Record: record,
-		})
-	}
-
-	slices.SortStableFunc(summaryRecords, func(a, b SummaryRecordKeyPair) int {
+	slices.SortStableFunc(summaryRecords, func(a, b akari.SummaryRecordKeyPair) int {
 		totalIndex := summary.GetIndex("Total")
 		if a.Record[totalIndex].(float64) > b.Record[totalIndex].(float64) {
 			return -1
@@ -432,16 +421,11 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	data.WriteInText(w)
 }
 
-type DbLogRecord struct {
-	Timestamp time.Time
-	Elapsed   float64
-	Query     string
-}
-
-func parseDbLogRecords(r io.Reader) map[string][]DbLogRecord {
+func parseDbLogRecords(r io.Reader) akari.LogRecords {
 	scanner := bufio.NewScanner(r)
 
-	logRecords := map[string][]DbLogRecord{}
+	logRecords := map[string][][]any{}
+	md5Hash := md5.New()
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -461,65 +445,84 @@ func parseDbLogRecords(r io.Reader) map[string][]DbLogRecord {
 
 		query := tokens[3]
 
-		logRecords[query] = append(logRecords[query], DbLogRecord{
-			Timestamp: timestamp,
-			Elapsed:   elapsed,
-			Query:     query,
+		key := []any{
+			query,
+		}
+		hashKey := string(md5Hash.Sum([]byte(fmt.Sprintf("%v", key))))
+
+		logRecords[hashKey] = append(logRecords[hashKey], []any{
+			timestamp,
+			elapsed,
+			query,
 		})
 	}
 
-	return logRecords
+	return akari.LogRecords{
+		Columns: []akari.LogRecordColumn{
+			{Name: "Timestamp"},
+			{Name: "Elapsed"},
+			{Name: "Query"},
+		},
+		KeyColumns: []akari.LogRecordColumn{
+			{Name: "Query"},
+		},
+		Records: logRecords,
+	}
 }
 
-type DbSummaryRecord struct {
-	Count int
-	Total float64
-	Query string
-}
-
-func analyzeDbSummary(logRecords map[string][]DbLogRecord) []DbSummaryRecord {
-	summary := []DbSummaryRecord{}
-	for query, records := range logRecords {
+func analyzeDbSummary(logRecords akari.LogRecords) akari.SummaryRecords {
+	summary := map[string][]any{}
+	for key, records := range logRecords.Records {
 		elapsedTimes := []float64{}
 		for _, record := range records {
-			elapsedTimes = append(elapsedTimes, record.Elapsed)
+			elapsedTimes = append(elapsedTimes, record[logRecords.GetIndex("Elapsed")].(float64))
 		}
 
 		totalElapsed := getSum(elapsedTimes)
 
-		summary = append(summary, DbSummaryRecord{
-			Count: len(records),
-			Total: totalElapsed,
-			Query: query,
-		})
+		summary[key] = []any{
+			len(records),
+			totalElapsed,
+			records[0][logRecords.GetIndex("Query")].(string),
+		}
 	}
 
-	return summary
+	return akari.SummaryRecords{
+		Columns: []akari.SummaryRecordColumn{
+			{Name: "Count"},
+			{Name: "Total"},
+			{Name: "Query"},
+		},
+		Rows: summary,
+	}
 }
 
 func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 	summary := analyzeDbSummary(parseDbLogRecords(r))
 
-	slices.SortStableFunc(summary, func(a, b DbSummaryRecord) int {
-		if a.Total > b.Total {
+	records := summary.GetKeyPairs()
+
+	slices.SortStableFunc(records, func(a, b akari.SummaryRecordKeyPair) int {
+		totalIndex := summary.GetIndex("Total")
+		if a.Record[totalIndex].(float64) > b.Record[totalIndex].(float64) {
 			return -1
-		} else if a.Total < b.Total {
+		} else if a.Record[totalIndex].(float64) < b.Record[totalIndex].(float64) {
 			return 1
 		} else {
-			return strings.Compare(a.Query, b.Query)
+			return strings.Compare(a.Key, b.Key)
 		}
 	})
 
 	rows := [][]string{}
-	for j, record := range summary {
+	for j, record := range records {
 		if j > 100 {
 			break
 		}
 
 		rows = append(rows, []string{
-			strconv.Itoa(record.Count),
-			fmt.Sprintf("%.3f", record.Total),
-			record.Query,
+			strconv.Itoa(record.Record[summary.GetIndex("Count")].(int)),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Total")].(float64)),
+			record.Record[summary.GetIndex("Query")].(string),
 		})
 	}
 
