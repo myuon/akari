@@ -13,7 +13,7 @@
 			{{ if .IsDir }}
 			<a href="/?dir={{ .Path }}">{{ .Name }}/</a>
 			{{ else }}
-			<a href="/view?file={{ .Path }}">{{ .Name }}</a>
+			<a href="/view?file={{ .Path }}">{{ .Name }} - {{ .ModifiedAt }} ({{ .Size }}B)</a>
 			{{ end }}
 		</li>
 		{{ end }}

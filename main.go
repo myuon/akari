@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"log"
 	"log/slog"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/akamensky/argparse"
 	"github.com/dustin/go-humanize"
@@ -320,14 +320,14 @@ var (
 	rootDir       = "."
 )
 
-// FileData represents a single file's information
 type FileData struct {
-	Name  string
-	Path  string
-	IsDir bool
+	Name       string
+	Path       string
+	IsDir      bool
+	ModifiedAt time.Time
+	Size       int64
 }
 
-// PageData represents the data passed to the HTML template
 type PageData struct {
 	Title string
 	Files []FileData
@@ -335,23 +335,31 @@ type PageData struct {
 
 func listFiles(root string) ([]FileData, error) {
 	var files []FileData
-	// Read the directory contents
-	entries, err := ioutil.ReadDir(root)
+	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, err
 	}
 	for _, entry := range entries {
+		fileInfo, err := entry.Info()
+		if err != nil {
+			return nil, err
+		}
+
+		modifiedAt := fileInfo.ModTime()
+		size := fileInfo.Size()
+
 		files = append(files, FileData{
-			Name:  entry.Name(),
-			Path:  filepath.Join(root, entry.Name()),
-			IsDir: entry.IsDir(),
+			Name:       entry.Name(),
+			Path:       filepath.Join(root, entry.Name()),
+			IsDir:      entry.IsDir(),
+			Size:       size,
+			ModifiedAt: modifiedAt,
 		})
 	}
 	return files, nil
 }
 
 func fileHandler(w http.ResponseWriter, r *http.Request) {
-	// Get the directory from the query or default to root
 	dir := r.URL.Query().Get("dir")
 	if dir == "" {
 		dir = rootDir
