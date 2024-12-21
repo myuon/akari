@@ -17,7 +17,8 @@ import (
 
 var (
 	nginxLogRegexp = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "([^"]+)" (\d+) (\d+) "([^"]+)" "([^"]+)" (\S+)$`)
-	ulidLike       = regexp.MustCompile(`[0-9A-Z]{26}`)
+	ulidLike       = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
+	uuidLike       = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 )
 
 func parse(line string) []string {
@@ -110,6 +111,7 @@ func parseLogRecords(r io.Reader) map[string][]LogRecord {
 		}
 
 		request = ulidLike.ReplaceAllLiteralString(request, "[ulid]")
+		request = uuidLike.ReplaceAllLiteralString(request, "[uuid]")
 
 		if strings.Contains(request, "?") {
 			path := strings.Split(request, "?")[0]
