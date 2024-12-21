@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	nginxLogRegexp = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "([^"]+)" (\d+) (\d+) "([^"]+)" "([^"]+)" (\S+)$`)
+	nginxLogRegexp = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "(\S+) (\S+) ([^"]+)" (\d+) (\d+) "([^"]+)" "([^"]+)" (\S+)$`)
 	ulidLike       = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
 	uuidLike       = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 )
@@ -50,12 +50,18 @@ type SummaryRecord struct {
 	MeanBytes  int
 	MaxBytes   int
 	Request    string
+	Method     string
+	Path       string
 }
 
 type LogRecord struct {
 	Status       int
 	Bytes        int
 	ResponseTime float64
+	Method       string
+	Path         string
+	Protocol     string
+	UserAgent    string
 }
 
 func getSum[T int | float64](values []T) T {
@@ -101,20 +107,24 @@ func parseLogRecords(r io.Reader) map[string][]LogRecord {
 
 		tokens := parse(line)
 
-		request := tokens[4]
-		status, err := strconv.Atoi(tokens[5])
+		method := tokens[4]
+		path := tokens[5]
+		protocol := tokens[6]
+		status, err := strconv.Atoi(tokens[7])
 		if err != nil {
 			log.Fatal(err)
 		}
-		bytes, err := strconv.Atoi(tokens[6])
+		bytes, err := strconv.Atoi(tokens[8])
 		if err != nil {
 			log.Fatal(err)
 		}
-		responseTime, err := strconv.ParseFloat(tokens[9], 64)
+		userAgent := tokens[10]
+		responseTime, err := strconv.ParseFloat(tokens[11], 64)
 		if err != nil {
 			log.Fatal(err)
 		}
 
+		request := fmt.Sprintf("%v %v", method, path)
 		request = ulidLike.ReplaceAllLiteralString(request, "[ulid]")
 		request = uuidLike.ReplaceAllLiteralString(request, "[uuid]")
 
@@ -134,6 +144,10 @@ func parseLogRecords(r io.Reader) map[string][]LogRecord {
 			Status:       status,
 			Bytes:        bytes,
 			ResponseTime: responseTime,
+			Method:       method,
+			Path:         path,
+			Protocol:     protocol,
+			UserAgent:    userAgent,
 		})
 	}
 
@@ -196,6 +210,8 @@ func analyzeSummary(logRecords map[string][]LogRecord) []SummaryRecord {
 			MeanBytes:  getMean(bytesSlice),
 			MaxBytes:   slices.Max(bytesSlice),
 			Request:    path,
+			Method:     records[0].Method,
+			Path:       records[0].Path,
 		})
 	}
 
@@ -247,7 +263,8 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 		"MinBs",
 		"MeanBs",
 		"MaxBs",
-		"Request",
+		"Method",
+		"Path",
 	})
 
 	for j, record := range summary {
@@ -294,7 +311,8 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 			humanize.Bytes(uint64(record.MinBytes)),
 			humanize.Bytes(uint64(record.MeanBytes)),
 			humanize.Bytes(uint64(record.MaxBytes)),
-			record.Request,
+			record.Method,
+			record.Path,
 		})
 	}
 
@@ -312,7 +330,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 
 	for _, row := range table {
 		for i, cell := range row {
-			if i == 1 || i == 3 || i == 5 || i == 21 {
+			if i == 1 || i == 3 || i == 5 || i == 21 || i == 22 {
 				fmt.Fprintf(w, "%-*s", widths[i], cell)
 			} else {
 				fmt.Fprintf(w, "%*s", widths[i], cell)
