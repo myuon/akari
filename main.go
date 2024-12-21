@@ -3,9 +3,14 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"html/template"
 	"io"
+	"io/ioutil"
 	"log"
+	"log/slog"
+	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -310,31 +315,161 @@ func analyzeNginxLog(r io.Reader, prev io.Reader) {
 	}
 }
 
+var (
+	templateFiles = template.Must(template.ParseGlob("templates/*.html"))
+	rootDir       = "."
+)
+
+// FileData represents a single file's information
+type FileData struct {
+	Name  string
+	Path  string
+	IsDir bool
+}
+
+// PageData represents the data passed to the HTML template
+type PageData struct {
+	Title string
+	Files []FileData
+}
+
+func listFiles(root string) ([]FileData, error) {
+	var files []FileData
+	// Read the directory contents
+	entries, err := ioutil.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		files = append(files, FileData{
+			Name:  entry.Name(),
+			Path:  filepath.Join(root, entry.Name()),
+			IsDir: entry.IsDir(),
+		})
+	}
+	return files, nil
+}
+
+func fileHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the directory from the query or default to root
+	dir := r.URL.Query().Get("dir")
+	if dir == "" {
+		dir = rootDir
+	}
+
+	files, err := listFiles(dir)
+	if err != nil {
+		http.Error(w, "Failed to list files", http.StatusInternalServerError)
+		log.Println("Error listing files:", err)
+		return
+	}
+
+	// Define the template
+	tmpl := `<!DOCTYPE html>
+<html>
+<head>
+	<title>{{ .Title }}</title>
+</head>
+<body>
+	<h1>{{ .Title }}</h1>
+	<ul>
+		{{ range .Files }}
+		<li>
+			{{ if .IsDir }}
+			<a href="/?dir={{ .Path }}">{{ .Name }}/</a>
+			{{ else }}
+			<a href="/view?file={{ .Path }}" target="_blank">{{ .Name }}</a>
+			{{ end }}
+		</li>
+		{{ end }}
+	</ul>
+</body>
+</html>`
+
+	template, err := template.New("fileList").Parse(tmpl)
+	if err != nil {
+		http.Error(w, "Failed to parse template", http.StatusInternalServerError)
+		log.Println("Template parsing error:", err)
+		return
+	}
+
+	// Render the template with data
+	pageData := PageData{
+		Title: "File List",
+		Files: files,
+	}
+	err = template.Execute(w, pageData)
+	if err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		log.Println("Template execution error:", err)
+		return
+	}
+}
+
+func viewFileHandler(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("file")
+	if filePath == "" {
+		http.Error(w, "File not specified", http.StatusBadRequest)
+		return
+	}
+
+	// Read the file content
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		http.Error(w, "Failed to read file", http.StatusInternalServerError)
+		log.Println("Error reading file:", err)
+		return
+	}
+
+	// Display the file content
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write(content)
+}
+
 func main() {
 	parser := argparse.NewParser("akari", "Log analyzer")
 
-	prev := parser.String("p", "prev", &argparse.Options{Required: false, Help: "Previous log file"})
-	file := parser.StringPositional(nil)
+	// prev := parser.String("p", "prev", &argparse.Options{Required: false, Help: "Previous log file"})
+	serveCommand := parser.NewCommand("serve", "Starts a web server to serve the log analyzer")
+	logDir := serveCommand.StringPositional(nil)
 
 	err := parser.Parse(os.Args)
 	if err != nil {
 		fmt.Print(parser.Usage(err))
 	}
 
-	var prevFile *os.File
-	if prev != nil && *prev != "" {
-		p, err := os.Open(*prev)
-		if err != nil {
-			log.Fatal(err)
+	// var prevFile *os.File
+	// if prev != nil && *prev != "" {
+	// 	p, err := os.Open(*prev)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+
+	// 	prevFile = p
+	// }
+
+	// logFile, err := os.Open(*file)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// analyzeNginxLog(logFile, prevFile)
+
+	if serveCommand != nil {
+		rootDir = *logDir
+
+		http.HandleFunc("/", fileHandler)
+		http.HandleFunc("/view", viewFileHandler)
+
+		port := 8089
+		if val, ok := os.LookupEnv("PORT"); ok {
+			port, _ = strconv.Atoi(val)
 		}
 
-		prevFile = p
-	}
+		slog.Info("Starting server", "port", port, "url", fmt.Sprintf("http://localhost:%v", port))
 
-	logFile, err := os.Open(*file)
-	if err != nil {
-		log.Fatal(err)
+		if err := http.ListenAndServe(fmt.Sprintf(":%v", port), nil); err != nil {
+			slog.Error("Failed to start server", "error", err)
+		}
 	}
-
-	analyzeNginxLog(logFile, prevFile)
 }
