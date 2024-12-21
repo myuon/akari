@@ -33,41 +33,6 @@ func parse(line string) []string {
 	return nginxLogRegexp.FindStringSubmatch(line)
 }
 
-type NginxSummaryRecord struct {
-	Count      int
-	Total      float64
-	Mean       float64
-	Stddev     float64
-	Min        float64
-	P50        float64
-	P90        float64
-	P95        float64
-	P99        float64
-	Max        float64
-	Status2xx  int
-	Status3xx  int
-	Status4xx  int
-	Status5xx  int
-	TotalBytes int
-	MinBytes   int
-	MeanBytes  int
-	MaxBytes   int
-	Key        NginxLogRecordKey
-}
-
-type NginxLogRecord struct {
-	Status       int
-	Bytes        int
-	ResponseTime float64
-	UserAgent    string
-}
-
-type NginxLogRecordKey struct {
-	Protocol string
-	Method   string
-	Url      string
-}
-
 func getSum[T int | float64](values []T) T {
 	total := 0.0
 	for _, value := range values {
@@ -182,9 +147,28 @@ func parseLogRecords(r io.Reader) akari.LogRecords {
 	}
 }
 
-func analyzeSummary(logRecords akari.LogRecords) []NginxSummaryRecord {
-	summary := []NginxSummaryRecord{}
-	for _, records := range logRecords.Records {
+type SummaryRecordColumn struct {
+	Name string
+}
+
+type SummaryRecord struct {
+	Columns []SummaryRecordColumn
+	Rows    map[string][]any
+}
+
+func (r SummaryRecord) GetIndex(key string) int {
+	for i, column := range r.Columns {
+		if column.Name == key {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func analyzeSummary(logRecords akari.LogRecords) SummaryRecord {
+	summary := map[string][]any{}
+	for key, records := range logRecords.Records {
 		requestTimes := []float64{}
 		for _, record := range records {
 			responseTime := record[logRecords.GetIndex("ResponseTime")].(float64)
@@ -221,107 +205,145 @@ func analyzeSummary(logRecords akari.LogRecords) []NginxSummaryRecord {
 			continue
 		}
 
-		summary = append(summary, NginxSummaryRecord{
-			Count:      len(records),
-			Total:      totalRequestTime,
-			Mean:       totalRequestTime / float64(len(records)),
-			Stddev:     getStddev(requestTimes),
-			Min:        slices.Min(requestTimes),
-			P50:        getPercentile(requestTimes, 50),
-			P90:        getPercentile(requestTimes, 90),
-			P95:        getPercentile(requestTimes, 95),
-			P99:        getPercentile(requestTimes, 99),
-			Max:        slices.Max(requestTimes),
-			Status2xx:  status2xx,
-			Status3xx:  status3xx,
-			Status4xx:  status4xx,
-			Status5xx:  status5xx,
-			TotalBytes: getSum(bytesSlice),
-			MinBytes:   slices.Min(bytesSlice),
-			MeanBytes:  getMean(bytesSlice),
-			MaxBytes:   slices.Max(bytesSlice),
-			Key: NginxLogRecordKey{
-				Protocol: records[0][logRecords.GetIndex("Protocol")].(string),
-				Method:   records[0][logRecords.GetIndex("Method")].(string),
-				Url:      records[0][logRecords.GetIndex("Url")].(string),
-			},
-		})
+		summary[key] = []any{
+			len(records),
+			totalRequestTime,
+			totalRequestTime / float64(len(records)),
+			getStddev(requestTimes),
+			slices.Min(requestTimes),
+			getPercentile(requestTimes, 50),
+			getPercentile(requestTimes, 90),
+			getPercentile(requestTimes, 95),
+			getPercentile(requestTimes, 99),
+			slices.Max(requestTimes),
+			status2xx,
+			status3xx,
+			status4xx,
+			status5xx,
+			getSum(bytesSlice),
+			slices.Min(bytesSlice),
+			getMean(bytesSlice),
+			slices.Max(bytesSlice),
+			records[0][logRecords.GetIndex("Protocol")].(string),
+			records[0][logRecords.GetIndex("Method")].(string),
+			records[0][logRecords.GetIndex("Url")].(string),
+		}
 	}
 
-	return summary
+	return SummaryRecord{
+		Columns: []SummaryRecordColumn{
+			{Name: "Count"},
+			{Name: "Total"},
+			{Name: "Mean"},
+			{Name: "Stddev"},
+			{Name: "Min"},
+			{Name: "P50"},
+			{Name: "P90"},
+			{Name: "P95"},
+			{Name: "P99"},
+			{Name: "Max"},
+			{Name: "2xx"},
+			{Name: "3xx"},
+			{Name: "4xx"},
+			{Name: "5xx"},
+			{Name: "TotalBytes"},
+			{Name: "MinBytes"},
+			{Name: "MeanBytes"},
+			{Name: "MaxBytes"},
+			{Name: "Protocol"},
+			{Name: "Method"},
+			{Name: "Url"},
+		},
+		Rows: summary,
+	}
 }
 
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	summary := analyzeSummary(parseLogRecords(r))
 
-	prevSummary := map[NginxLogRecordKey]NginxSummaryRecord{}
+	prevSummary := SummaryRecord{}
 	if prev != nil {
 		sm := analyzeSummary(parseLogRecords(prev))
 
-		for _, record := range sm {
-			prevSummary[record.Key] = record
-		}
+		prevSummary = sm
 	}
 
-	slices.SortStableFunc(summary, func(a, b NginxSummaryRecord) int {
-		if a.Total > b.Total {
+	type SummaryRecordKeyPair struct {
+		Key    string
+		Record []any
+	}
+
+	summaryRecords := []SummaryRecordKeyPair{}
+	for key, record := range summary.Rows {
+		summaryRecords = append(summaryRecords, SummaryRecordKeyPair{
+			Key:    key,
+			Record: record,
+		})
+	}
+
+	slices.SortStableFunc(summaryRecords, func(a, b SummaryRecordKeyPair) int {
+		totalIndex := summary.GetIndex("Total")
+		if a.Record[totalIndex].(float64) > b.Record[totalIndex].(float64) {
 			return -1
-		} else if a.Total < b.Total {
+		} else if a.Record[totalIndex].(float64) < b.Record[totalIndex].(float64) {
 			return 1
 		} else {
-			return strings.Compare(a.Key.Method, b.Key.Method)
+			return strings.Compare(a.Key, b.Key)
 		}
 	})
 
 	rows := [][]string{}
 
-	for j, record := range summary {
+	for j, record := range summaryRecords {
 		if j > 100 {
 			break
 		}
 
-		prevRecord, ok := prevSummary[record.Key]
+		prevRecord, ok := prevSummary.Rows[record.Key]
 
 		countDiff := ""
 		if ok {
-			countDiff = fmt.Sprintf("(%+d%%)", (record.Count-prevRecord.Count)*100/prevRecord.Count)
+			countIndex := summary.GetIndex("Count")
+			countDiff = fmt.Sprintf("(%+d%%)", (record.Record[countIndex].(int)-prevRecord[countIndex].(int))*100/prevRecord[countIndex].(int))
 		}
 
 		totalDiff := ""
 		if ok {
-			totalDiff = fmt.Sprintf("(%+d%%)", int((record.Total-prevRecord.Total)*100/prevRecord.Total))
+			totalIndex := summary.GetIndex("Total")
+			totalDiff = fmt.Sprintf("(%+d%%)", int((record.Record[totalIndex].(float64)-prevRecord[totalIndex].(float64))*100/prevRecord[totalIndex].(float64)))
 		}
 
 		meanDiff := ""
 		if ok {
-			meanDiff = fmt.Sprintf("(%+d%%)", int((record.Mean-prevRecord.Mean)*100/prevRecord.Mean))
+			meanIndex := summary.GetIndex("Mean")
+			meanDiff = fmt.Sprintf("(%+d%%)", int((record.Record[meanIndex].(float64)-prevRecord[meanIndex].(float64))*100/prevRecord[meanIndex].(float64)))
 		}
 
 		rows = append(rows, []string{
-			strconv.Itoa(record.Count),
+			strconv.Itoa(record.Record[summary.GetIndex("Count")].(int)),
 			countDiff,
-			fmt.Sprintf("%.3f", record.Total),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Total")].(float64)),
 			totalDiff,
-			fmt.Sprintf("%.4f", record.Mean),
+			fmt.Sprintf("%.4f", record.Record[summary.GetIndex("Mean")].(float64)),
 			meanDiff,
-			fmt.Sprintf("%.4f", record.Stddev),
-			fmt.Sprintf("%.3f", record.Min),
-			fmt.Sprintf("%.3f", record.P50),
-			fmt.Sprintf("%.3f", record.P90),
-			fmt.Sprintf("%.3f", record.P95),
-			fmt.Sprintf("%.3f", record.P99),
-			fmt.Sprintf("%.3f", record.Max),
-			strconv.Itoa(record.Status2xx),
-			strconv.Itoa(record.Status3xx),
-			strconv.Itoa(record.Status4xx),
-			strconv.Itoa(record.Status5xx),
-			humanize.Bytes(uint64(record.TotalBytes)),
-			humanize.Bytes(uint64(record.MinBytes)),
-			humanize.Bytes(uint64(record.MeanBytes)),
-			humanize.Bytes(uint64(record.MaxBytes)),
-			record.Key.Protocol,
-			record.Key.Method,
-			record.Key.Url,
+			fmt.Sprintf("%.4f", record.Record[summary.GetIndex("Stddev")].(float64)),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Min")].(float64)),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P50")].(float64)),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P90")].(float64)),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P95")].(float64)),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P99")].(float64)),
+			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Max")].(float64)),
+			strconv.Itoa(record.Record[summary.GetIndex("2xx")].(int)),
+			strconv.Itoa(record.Record[summary.GetIndex("3xx")].(int)),
+			strconv.Itoa(record.Record[summary.GetIndex("4xx")].(int)),
+			strconv.Itoa(record.Record[summary.GetIndex("5xx")].(int)),
+			humanize.Bytes(uint64(record.Record[summary.GetIndex("TotalBytes")].(int))),
+			humanize.Bytes(uint64(record.Record[summary.GetIndex("MinBytes")].(int))),
+			humanize.Bytes(uint64(record.Record[summary.GetIndex("MeanBytes")].(int))),
+			humanize.Bytes(uint64(record.Record[summary.GetIndex("MaxBytes")].(int))),
+			record.Record[summary.GetIndex("Protocol")].(string),
+			record.Record[summary.GetIndex("Method")].(string),
+			record.Record[summary.GetIndex("Url")].(string),
 		})
 	}
 
