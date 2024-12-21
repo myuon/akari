@@ -198,7 +198,7 @@ func analyzeSummary(logRecords map[string][]LogRecord) []SummaryRecord {
 	return summary
 }
 
-func analyzeNginxLog(r io.Reader, prev io.Reader) {
+func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	summary := analyzeSummary(parseLogRecords(r))
 
 	prevSummary := map[string]SummaryRecord{}
@@ -303,15 +303,15 @@ func analyzeNginxLog(r io.Reader, prev io.Reader) {
 	for _, row := range table {
 		for i, cell := range row {
 			if i == 1 || i == 3 || i == 5 || i == 21 {
-				fmt.Printf("%-*s", widths[i], cell)
+				fmt.Fprintf(w, "%-*s", widths[i], cell)
 			} else {
-				fmt.Printf("%*s", widths[i], cell)
+				fmt.Fprintf(w, "%*s", widths[i], cell)
 			}
 			if i < len(row)-1 {
-				fmt.Print("  ")
+				fmt.Fprint(w, "  ")
 			}
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 }
 
@@ -326,6 +326,24 @@ type FileData struct {
 	IsDir      bool
 	ModifiedAt time.Time
 	Size       int64
+	Peek       []byte
+}
+
+func (d FileData) SizeHuman() string {
+	return humanize.Bytes(uint64(d.Size))
+}
+
+func (d FileData) PeekString() string {
+	peek := string(d.Peek)
+	if len(peek) > 100 {
+		peek = fmt.Sprintf("%v...", peek[:100])
+	}
+
+	return peek
+}
+
+func (d FileData) ModifiedAtString() string {
+	return d.ModifiedAt.Format(time.DateTime)
 }
 
 type PageData struct {
@@ -347,6 +365,23 @@ func listFiles(root string) ([]FileData, error) {
 
 		modifiedAt := fileInfo.ModTime()
 		size := fileInfo.Size()
+		peek := make([]byte, 100)
+		if !entry.IsDir() {
+			file, err := os.Open(filepath.Join(root, entry.Name()))
+			if err != nil {
+				return nil, err
+			}
+			defer file.Close()
+
+			n, err := file.Read(peek)
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+
+			peek = peek[:n]
+		} else {
+			peek = nil
+		}
 
 		files = append(files, FileData{
 			Name:       entry.Name(),
@@ -354,6 +389,7 @@ func listFiles(root string) ([]FileData, error) {
 			IsDir:      entry.IsDir(),
 			Size:       size,
 			ModifiedAt: modifiedAt,
+			Peek:       peek,
 		})
 	}
 	return files, nil
@@ -384,7 +420,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func viewFileHandler(w http.ResponseWriter, r *http.Request) {
+func rawFileHandler(w http.ResponseWriter, r *http.Request) {
 	filePath := r.URL.Query().Get("file")
 	if filePath == "" {
 		http.Error(w, "File not specified", http.StatusBadRequest)
@@ -404,6 +440,23 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func viewFileHandler(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("file")
+	if filePath == "" {
+		http.Error(w, "File not specified", http.StatusBadRequest)
+		return
+	}
+
+	logFile, err := os.Open(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	analyzeNginxLog(logFile, nil, w)
+}
+
 func main() {
 	parser := argparse.NewParser("akari", "Log analyzer")
 
@@ -416,27 +469,12 @@ func main() {
 		fmt.Print(parser.Usage(err))
 	}
 
-	// var prevFile *os.File
-	// if prev != nil && *prev != "" {
-	// 	p, err := os.Open(*prev)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-
-	// 	prevFile = p
-	// }
-
-	// logFile, err := os.Open(*file)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// analyzeNginxLog(logFile, prevFile)
-
 	if serveCommand != nil {
 		rootDir = *logDir
 
+		http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
 		http.HandleFunc("/", fileHandler)
+		http.HandleFunc("/raw", rawFileHandler)
 		http.HandleFunc("/view", viewFileHandler)
 
 		port := 8089

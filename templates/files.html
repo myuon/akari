@@ -3,20 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/public/style.css" />
 	<title>{{ .Title }}</title>
 </head>
 <body>
 	<h1>{{ .Title }}</h1>
 	<ul>
-		{{ range .Files }}
-		<li>
-			{{ if .IsDir }}
-			<a href="/?dir={{ .Path }}">{{ .Name }}/</a>
-			{{ else }}
-			<a href="/view?file={{ .Path }}">{{ .Name }} - {{ .ModifiedAt }} ({{ .Size }}B)</a>
-			{{ end }}
-		</li>
-		{{ end }}
+		<table>
+			<thead>
+				<tr>
+					<th>DateTime</th>
+					<th>Name</th>
+					<th>Size</th>
+					<th>Peek</th>
+				</tr>
+			</thead>
+			<tbody>
+				{{ range .Files }}
+				<tr>
+					<td>{{ .ModifiedAtString }}</td>
+					<td>
+						{{ if .IsDir }}
+						<a href="/?dir={{ .Path }}">{{ .Name }}/</a>
+						{{ else }}
+						<a href="/view?file={{ .Path }}">{{ .Name }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
+						{{ end }}
+					</td>
+					<td>{{ .SizeHuman }}</td>
+					<td><code>{{ .PeekString }}</code></td>
+				</tr>
+				{{ end }}
+		</table>
 	</ul>
 </body>
 </html>
