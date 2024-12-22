@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/akamensky/argparse"
 	"github.com/dustin/go-humanize"
 	"github.com/myuon/akari/akari"
@@ -62,7 +63,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 				Converters: []akari.Converter{
 					akari.ConvertUlid{Tag: "(ulid)"},
 					akari.ConvertUuid{Tag: "(uuid)"},
-					akari.ConvertQueryParms{Tag: "*"},
+					akari.ConvertQueryParams{Tag: "*"},
 				},
 			},
 		},
@@ -460,8 +461,9 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 }
 
 var (
-	templateFiles = template.Must(template.ParseGlob("templates/*.html"))
-	rootDir       = "."
+	templateFiles  = template.Must(template.ParseGlob("templates/*.html"))
+	rootDir        = "."
+	configFilePath = "akari.toml"
 )
 
 type FileData struct {
@@ -650,29 +652,45 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-	if logType == "nginx" {
-		analyzeNginxLog(logFile, prevLogFile, w)
-	} else if logType == "dbquery" {
-		analyzeDbQueryLog(logFile, w)
-	} else {
-		http.Error(w, "Unknown log type", http.StatusBadRequest)
+	config := akari.AkariConfig{}
+	if _, err := toml.DecodeFile(configFilePath, &config); err != nil {
+		log.Fatal(err)
 	}
+
+	slog.Info("Loaded config", "config", config)
+
+	for _, analyzer := range config.Analyzers {
+		if logType == analyzer.Name {
+			analyzer.Analyze(logFile, prevLogFile, w)
+			return
+		}
+	}
+
+	http.Error(w, "Unknown log type", http.StatusBadRequest)
 }
 
 func main() {
 	parser := argparse.NewParser("akari", "Log analyzer")
 
-	// prev := parser.String("p", "prev", &argparse.Options{Required: false, Help: "Previous log file"})
+	initCommand := parser.NewCommand("init", "Generates a new akari configuration file")
 	serveCommand := parser.NewCommand("serve", "Starts a web server to serve the log analyzer")
+	configFile := serveCommand.String("c", "akari.toml", &argparse.Options{Help: "Configuration file path"})
 	logDir := serveCommand.StringPositional(nil)
 
-	err := parser.Parse(os.Args)
-	if err != nil {
+	if err := parser.Parse(os.Args); err != nil {
 		fmt.Print(parser.Usage(err))
 	}
 
-	if serveCommand != nil {
+	if initCommand.Happened() {
+		file, err := os.Create("akari.toml")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		toml.NewEncoder(file).Encode(akari.AkariConfig{})
+	} else if serveCommand.Happened() {
 		rootDir = *logDir
+		configFilePath = *configFile
 
 		http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
 		http.HandleFunc("/", fileHandler)

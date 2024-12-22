@@ -2,6 +2,7 @@ package akari
 
 import (
 	"io"
+	"log"
 	"regexp"
 )
 
@@ -17,15 +18,30 @@ type ParserColumnConverterConfig struct {
 
 func (c ParserColumnConverterConfig) Load() Converter {
 	switch c.Type {
-	case "ParseInt64":
+	case "parseInt":
+		return ConvertParseInt{}
+	case "parseInt64":
 		return ConvertParseInt64{}
-	case "UnixNano":
+	case "parseFloat64":
+		return ConvertParseFloat64{}
+	case "uuid":
+		return ConvertUuid{Tag: c.Options["tag"].(string)}
+	case "ulid":
+		return ConvertUlid{Tag: c.Options["tag"].(string)}
+	case "unixNano":
 		return ConvertUnixNano{}
-	case "Div":
-		return ConvertDiv{Divisor: c.Options["Divisor"].(float64)}
-	case "MysqlBulkClause":
+	case "unixMilli":
+		return ConvertUnixMilli{}
+	case "unix":
+		return ConvertUnix{}
+	case "div":
+		return ConvertDiv{Divisor: c.Options["divisor"].(float64)}
+	case "queryParams":
+		return ConvertQueryParams{Tag: c.Options["tag"].(string)}
+	case "mysqlBulkClause":
 		return ConvertMysqlBulkClause{}
 	default:
+		log.Fatalf("Unknown converter type: %v", c.Type)
 		return nil
 	}
 }
@@ -66,6 +82,30 @@ type ParserConfig struct {
 	Columns ParserColumnConfigs
 }
 
+type QueryFilterConfig struct {
+	Type    string
+	Options map[string]any
+}
+
+func (c QueryFilterConfig) Load() QueryFilter {
+	switch c.Type {
+	case "between":
+		return QueryFilter{
+			Type: QueryFilterTypeBetween,
+			Between: struct {
+				Start float64
+				End   float64
+			}{
+				Start: float64(c.Options["start"].(int64)),
+				End:   float64(c.Options["end"].(int64)),
+			},
+		}
+	default:
+		log.Fatalf("Unknown filter type: %v", c.Type)
+		return QueryFilter{}
+	}
+}
+
 type QueryFormatConfig struct {
 	Alignment string
 	Format    string
@@ -76,19 +116,20 @@ type QueryConfig struct {
 	From         string
 	ValueType    QueryValueType
 	Function     QueryFunction
-	Filter       *QueryFilter
+	Filter       *QueryFilterConfig
 	FormatOption QueryFormatConfig
 }
 
 type AnalyzerConfig struct {
+	Name         string
 	Parser       ParserConfig
 	GroupingKeys []string
 	Query        []QueryConfig
-	OrderKeys    []string
+	SortKeys     []string
 	Limit        int
 }
 
-func (c AnalyzerConfig) Analyze(r io.Reader, w io.Writer) {
+func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 	parseOptions := ParseOption{
 		RegExp:  c.Parser.RegExp,
 		Columns: c.Parser.Columns.Load(),
@@ -96,12 +137,18 @@ func (c AnalyzerConfig) Analyze(r io.Reader, w io.Writer) {
 	}
 	queryOptions := []Query{}
 	for _, query := range c.Query {
+		var filter *QueryFilter
+		if query.Filter != nil {
+			f := query.Filter.Load()
+			filter = &f
+		}
+
 		queryOptions = append(queryOptions, Query{
 			Name:      query.Name,
 			From:      query.From,
 			ValueType: query.ValueType,
 			Function:  query.Function,
-			Filter:    query.Filter,
+			Filter:    filter,
 		})
 	}
 	formatOptions := FormatOptions{
@@ -120,11 +167,15 @@ func (c AnalyzerConfig) Analyze(r io.Reader, w io.Writer) {
 	records := summary.GetKeyPairs()
 
 	orderKeyIndexes := []int{}
-	for _, orderKey := range c.OrderKeys {
+	for _, orderKey := range c.SortKeys {
 		orderKeyIndexes = append(orderKeyIndexes, summary.GetIndex(orderKey))
 	}
 	records.SortBy(orderKeyIndexes)
 
 	data := records.Format(formatOptions)
 	data.WriteInText(w)
+}
+
+type AkariConfig struct {
+	Analyzers []AnalyzerConfig
 }

@@ -68,11 +68,11 @@ func (c ConvertUuid) Convert(a any) any {
 	return uuidLike.ReplaceAllLiteralString(a.(string), c.Tag)
 }
 
-type ConvertQueryParms struct {
+type ConvertQueryParams struct {
 	Tag string
 }
 
-func (c ConvertQueryParms) Convert(a any) any {
+func (c ConvertQueryParams) Convert(a any) any {
 	url := a.(string)
 
 	if strings.Contains(url, "?") {

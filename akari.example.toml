@@ -1,0 +1,193 @@
+[[analyzers]]
+name = "nginx"
+groupingKeys = ["Method", "Url", "Protocol"]
+sortKeys = ["Total"]
+limit = 100
+
+[analyzers.parser]
+regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''
+
+[[analyzers.parser.columns]]
+name = "Method"
+specifier.name = "Method"
+converters = []
+
+[[analyzers.parser.columns]]
+name = "Url"
+specifier.name = "Url"
+converters = [
+  { type = "ulid", options = { tag = "(ulid)" } },
+  { type = "uuid", options = { tag = "(uuid)" } },
+  { type = "queryParams", options = { tag = "*" } },
+]
+
+[[analyzers.parser.columns]]
+name = "Protocol"
+specifier.name = "Protocol"
+converters = []
+
+[[analyzers.parser.columns]]
+name = "Status"
+specifier.name = "Status"
+converters = [{ type = "parseInt" }]
+
+[[analyzers.parser.columns]]
+name = "Bytes"
+specifier.name = "Bytes"
+converters = [{ type = "parseInt" }]
+
+[[analyzers.parser.columns]]
+name = "UserAgent"
+specifier.name = "UserAgent"
+converters = []
+
+[[analyzers.parser.columns]]
+name = "ResponseTime"
+specifier.name = "ResponseTime"
+converters = [{ type = "parseFloat64" }]
+
+
+[[analyzers.query]]
+name = "Count"
+from = "Url"
+valueType = "string"
+function = "count"
+formatOption = { alignment = "right" }
+
+[[analyzers.query]]
+name = "Total"
+from = "ResponseTime"
+valueType = "float64"
+function = "sum"
+formatOption = { alignment = "right", format = "%.3f" }
+
+[[analyzers.query]]
+name = "Mean"
+from = "ResponseTime"
+valueType = "float64"
+function = "mean"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "Stddev"
+from = "ResponseTime"
+valueType = "float64"
+function = "stddev"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "Min"
+from = "ResponseTime"
+valueType = "float64"
+function = "min"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "P50"
+from = "ResponseTime"
+valueType = "float64"
+function = "p50"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "P90"
+from = "ResponseTime"
+valueType = "float64"
+function = "p90"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "P95"
+from = "ResponseTime"
+valueType = "float64"
+function = "p95"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "P99"
+from = "ResponseTime"
+valueType = "float64"
+function = "p99"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "Max"
+from = "ResponseTime"
+valueType = "float64"
+function = "max"
+formatOption = { alignment = "right", format = "%.4f" }
+
+[[analyzers.query]]
+name = "2xx"
+from = "Status"
+valueType = "int"
+function = "count"
+filter = { type = "between", options = { start = 200, end = 300 } }
+formatOption = { alignment = "right" }
+
+[[analyzers.query]]
+name = "3xx"
+from = "Status"
+valueType = "int"
+function = "count"
+filter = { type = "between", options = { start = 300, end = 400 } }
+formatOption = { alignment = "right" }
+
+[[analyzers.query]]
+name = "4xx"
+from = "Status"
+valueType = "int"
+function = "count"
+filter = { type = "between", options = { start = 400, end = 500 } }
+formatOption = { alignment = "right" }
+
+[[analyzers.query]]
+name = "5xx"
+from = "Status"
+valueType = "int"
+function = "count"
+filter = { type = "between", options = { start = 500, end = 600 } }
+formatOption = { alignment = "right" }
+
+[[analyzers.query]]
+name = "TotalBs"
+from = "Bytes"
+valueType = "int"
+function = "sum"
+
+[[analyzers.query]]
+name = "MinBs"
+from = "Bytes"
+valueType = "int"
+function = "min"
+
+[[analyzers.query]]
+name = "MeanBs"
+from = "Bytes"
+valueType = "int"
+function = "mean"
+
+[[analyzers.query]]
+name = "MaxBs"
+from = "Bytes"
+valueType = "int"
+function = "max"
+
+[[analyzers.query]]
+name = "Protocol"
+from = "Protocol"
+valueType = "string"
+function = "any"
+
+[[analyzers.query]]
+name = "Method"
+from = "Method"
+valueType = "string"
+function = "any"
+formatOption = { alignment = "right" }
+
+[[analyzers.query]]
+name = "Url"
+from = "Url"
+valueType = "string"
+function = "any"
