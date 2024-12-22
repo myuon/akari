@@ -74,3 +74,7 @@ func (g *GlobalVar[T]) Load() T {
 	defer g.Mutex.Unlock()
 	return g.Value
 }
+
+func InsertAt[T any](slice []T, index int, value T) []T {
+	return append(slice[:index], append([]T{value}, slice[index:]...)...)
+}

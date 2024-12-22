@@ -42,10 +42,10 @@ func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
 }
 
 func (r *SummaryRecords) Insert(at int, column SummaryRecordColumn, generator func(key string, row []any) any) {
-	r.Columns = append(r.Columns[:at], append([]SummaryRecordColumn{column}, r.Columns[at:]...)...)
+	r.Columns = InsertAt(r.Columns, at, column)
 
 	for key := range r.Rows {
-		r.Rows[key] = append(r.Rows[key][:at], append([]any{generator(key, r.Rows[key])}, r.Rows[key][at:]...)...)
+		r.Rows[key] = InsertAt(r.Rows[key], at, generator(key, r.Rows[key]))
 	}
 }
 

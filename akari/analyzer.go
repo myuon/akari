@@ -220,7 +220,7 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 			Alignment:     add.FormatOption.Alignment,
 			HumanizeBytes: add.FormatOption.HumanizeBytes,
 		}
-		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions[:add.At], append([]FormatColumnOptions{option}, formatOptions.ColumnOptions[add.At:]...)...)
+		formatOptions.ColumnOptions = InsertAt(formatOptions.ColumnOptions, add.At, option)
 	}
 	for _, from := range c.Diffs {
 		at := summary.GetIndex(from) + 1
@@ -251,7 +251,7 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 			Alignment:     TableColumnAlignmentLeft,
 			HumanizeBytes: false,
 		}
-		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions[:at], append([]FormatColumnOptions{option}, formatOptions.ColumnOptions[at:]...)...)
+		formatOptions.ColumnOptions = InsertAt(formatOptions.ColumnOptions, at, option)
 	}
 
 	records := summary.GetKeyPairs()
