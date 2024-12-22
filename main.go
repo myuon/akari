@@ -33,32 +33,6 @@ func parse(line string) []string {
 	return nginxLogRegexp.FindStringSubmatch(line)
 }
 
-func getMean[T int | float64](values []T) T {
-	total := 0.0
-	for _, value := range values {
-		total += float64(value)
-	}
-	return T(total / float64(len(values)))
-}
-
-func getStddev(values []float64) float64 {
-	mean := getMean(values)
-	total := 0.0
-	for _, value := range values {
-		total += (value - mean) * (value - mean)
-	}
-	return total / float64(len(values))
-}
-
-func getPercentile(values_ []float64, percentile int) float64 {
-	values := append([]float64{}, values_...)
-
-	slices.Sort(values)
-
-	index := (percentile * len(values)) / 100
-	return values[index]
-}
-
 func parseLogRecords(r io.Reader) akari.LogRecords {
 	scanner := bufio.NewScanner(r)
 
@@ -173,12 +147,12 @@ func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 			len(records),
 			totalRequestTime,
 			totalRequestTime / float64(len(records)),
-			getStddev(requestTimes),
+			akari.GetStddev(requestTimes),
 			slices.Min(requestTimes),
-			getPercentile(requestTimes, 50),
-			getPercentile(requestTimes, 90),
-			getPercentile(requestTimes, 95),
-			getPercentile(requestTimes, 99),
+			akari.GetPercentile(requestTimes, 50),
+			akari.GetPercentile(requestTimes, 90),
+			akari.GetPercentile(requestTimes, 95),
+			akari.GetPercentile(requestTimes, 99),
 			slices.Max(requestTimes),
 			status2xx,
 			status3xx,
@@ -186,7 +160,7 @@ func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 			status5xx,
 			akari.GetSum(bytesSlice),
 			slices.Min(bytesSlice),
-			getMean(bytesSlice),
+			akari.GetMean(bytesSlice),
 			slices.Max(bytesSlice),
 			records[0][logRecords.Columns.GetIndex("Protocol")].(string),
 			records[0][logRecords.Columns.GetIndex("Method")].(string),
