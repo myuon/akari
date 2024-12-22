@@ -464,6 +464,7 @@ var (
 	templateFiles  = template.Must(template.ParseGlob("templates/*.html"))
 	rootDir        = "."
 	configFilePath = "akari.toml"
+	config         = akari.AkariConfig{}
 )
 
 type FileData struct {
@@ -532,10 +533,11 @@ func listFiles(root string) ([]FileData, error) {
 		}
 
 		logType := "unknown"
-		if nginxLogRegexp.Match(line) {
-			logType = "nginx"
-		} else if dbQueryLoggerRegexp.Match(line) {
-			logType = "dbquery"
+		for _, analyzer := range config.Analyzers {
+			if analyzer.Parser.RegExp.Match(line) {
+				logType = analyzer.Name
+				break
+			}
 		}
 
 		files = append(files, FileData{
@@ -652,13 +654,6 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-	config := akari.AkariConfig{}
-	if _, err := toml.DecodeFile(configFilePath, &config); err != nil {
-		log.Fatal(err)
-	}
-
-	slog.Info("Loaded config", "config", config)
-
 	for _, analyzer := range config.Analyzers {
 		if logType == analyzer.Name {
 			analyzer.Analyze(logFile, prevLogFile, w)
@@ -671,6 +666,7 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	parser := argparse.NewParser("akari", "Log analyzer")
+	verbose := parser.Flag("v", "verbose", &argparse.Options{Help: "Verbose mode"})
 
 	initCommand := parser.NewCommand("init", "Generates a new akari configuration file")
 	serveCommand := parser.NewCommand("serve", "Starts a web server to serve the log analyzer")
@@ -679,6 +675,10 @@ func main() {
 
 	if err := parser.Parse(os.Args); err != nil {
 		fmt.Print(parser.Usage(err))
+	}
+
+	if *verbose {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
 	if initCommand.Happened() {
@@ -691,6 +691,12 @@ func main() {
 	} else if serveCommand.Happened() {
 		rootDir = *logDir
 		configFilePath = *configFile
+
+		if _, err := toml.DecodeFile(configFilePath, &config); err != nil {
+			log.Fatal(err)
+		}
+
+		slog.Debug("Loaded config", "path", configFile, "config", config)
 
 		http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
 		http.HandleFunc("/", fileHandler)

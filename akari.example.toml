@@ -212,3 +212,65 @@ at = 3
 type = "diff"
 from = "Mean"
 formatOption = { alignment = "left", format = "(%+d%%)" }
+
+
+[[analyzers]]
+name = "mysql"
+groupingKeys = ["Query"]
+sortKeys = ["Total"]
+limit = 100
+
+[analyzers.parser]
+regexp = '''^([0-9]{19})\s+([0-9]+)\s+(.*)$'''
+
+[[analyzers.parser.columns]]
+name = "Timestamp"
+specifier.index = 1
+converters = [{ type = "parseInt64" }, { type = "unixNano" }]
+
+[[analyzers.parser.columns]]
+name = "Elapsed"
+specifier.index = 2
+converters = [
+  { type = "parseInt64" },
+  { type = "div", options = { divisor = 1e9 } },
+]
+
+[[analyzers.parser.columns]]
+name = "Query"
+specifier.index = 3
+converters = [{ type = "mysqlBulkClause" }]
+
+[[analyzers.query]]
+name = "Count"
+from = "Elapsed"
+valueType = "float64"
+function = "count"
+formatOption = { alignment = "right" }
+
+[[analyzers.query]]
+name = "Total"
+from = "Elapsed"
+valueType = "float64"
+function = "sum"
+formatOption = { alignment = "right", format = "%.3f" }
+
+[[analyzers.query]]
+name = "Mean"
+from = "Elapsed"
+valueType = "float64"
+function = "mean"
+formatOption = { alignment = "right", format = "%.3f" }
+
+[[analyzers.query]]
+name = "Query"
+from = "Query"
+valueType = "string"
+function = "any"
+
+[[analyzers.addColumn]]
+name = "(diff)"
+at = 1
+type = "diff"
+from = "Count"
+formatOption = { alignment = "left", format = "(%+d%%)" }

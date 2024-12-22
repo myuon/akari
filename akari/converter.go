@@ -123,7 +123,7 @@ type ConvertDiv struct {
 }
 
 func (c ConvertDiv) Convert(a any) any {
-	return a.(float64) / c.Divisor
+	return float64(a.(int64)) / c.Divisor
 }
 
 type ConvertMysqlBulkClause struct{}

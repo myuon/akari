@@ -9,6 +9,7 @@ type QueryValueType string
 
 const (
 	QueryValueTypeInt     QueryValueType = "int"
+	QueryValueTypeInt64   QueryValueType = "int64"
 	QueryValueTypeFloat64 QueryValueType = "float64"
 	QueryValueTypeString  QueryValueType = "string"
 )
@@ -108,6 +109,8 @@ func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) any {
 
 	switch a.ValueType {
 	case QueryValueTypeInt:
+		fallthrough
+	case QueryValueTypeInt64:
 		values := records.GetInts(fromIndex)
 		values = a.Filter.ApplyInt(values)
 
