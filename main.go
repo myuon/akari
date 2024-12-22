@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"crypto/md5"
 	"fmt"
 	"html/template"
 	"io"
@@ -29,100 +27,89 @@ var (
 	uuidLike            = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 )
 
-func parse(line string) []string {
-	return nginxLogRegexp.FindStringSubmatch(line)
-}
-
-func parseLogRecords(r io.Reader) akari.LogRecords {
-	scanner := bufio.NewScanner(r)
-
-	md5Hash := md5.New()
-	records := map[string]akari.LogRecordRows{}
-
-	subexpNames := nginxLogRegexp.SubexpNames()
-	subexpIndexByName := map[string]int{}
-	for i, name := range subexpNames {
-		if name != "" {
-			subexpIndexByName[name] = i
-		}
-	}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		tokens := parse(line)
-
-		method := tokens[subexpIndexByName["Method"]]
-		url := tokens[subexpIndexByName["Url"]]
-		protocol := tokens[subexpIndexByName["Protocol"]]
-		status, err := strconv.Atoi(tokens[subexpIndexByName["Status"]])
-		if err != nil {
-			log.Fatal(err)
-		}
-		bytes, err := strconv.Atoi(tokens[subexpIndexByName["Bytes"]])
-		if err != nil {
-			log.Fatal(err)
-		}
-		userAgent := tokens[subexpIndexByName["UserAgent"]]
-		responseTime, err := strconv.ParseFloat(tokens[subexpIndexByName["ResponseTime"]], 64)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		url = ulidLike.ReplaceAllLiteralString(url, "(ulid)")
-		url = uuidLike.ReplaceAllLiteralString(url, "(uuid)")
-
-		if strings.Contains(url, "?") {
-			splitted := strings.Split(url, "?")
-			path := splitted[0]
-
-			masked := []string{}
-			kvs := strings.Split(splitted[1], "&")
-			for _, kv := range kvs {
-				masked = append(masked, fmt.Sprintf("%s=*", strings.Split(kv, "=")[0]))
-			}
-
-			url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
-		}
-
-		key := []any{
-			protocol,
-			method,
-			url,
-		}
-
-		hashKey := md5Hash.Sum([]byte(fmt.Sprintf("%v", key)))
-		records[string(hashKey)] = append(records[string(hashKey)], []any{
-			status,
-			bytes,
-			responseTime,
-			userAgent,
-			protocol,
-			method,
-			url,
-		})
-	}
-
-	return akari.LogRecords{
-		Columns: []akari.LogRecordColumn{
-			{Name: "Status"},
-			{Name: "Bytes"},
-			{Name: "ResponseTime"},
-			{Name: "UserAgent"},
-			{Name: "Protocol"},
-			{Name: "Method"},
-			{Name: "Url"},
-		},
-		KeyColumns: []akari.LogRecordColumn{
-			{Name: "Protocol"},
-			{Name: "Method"},
-			{Name: "Url"},
-		},
-		Records: records,
-	}
-}
-
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
+	parseOptions := akari.ParseOption{
+		RegExp: nginxLogRegexp,
+		Columns: []akari.ParseColumnOption{
+			{
+				Name:       "Status",
+				SubexpName: "Status",
+				Converter: func(s string) any {
+					v, err := strconv.Atoi(s)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					return v
+				},
+			},
+			{
+				Name:       "Bytes",
+				SubexpName: "Bytes",
+				Converter: func(s string) any {
+					v, err := strconv.Atoi(s)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					return v
+				},
+			},
+			{
+				Name:       "ResponseTime",
+				SubexpName: "ResponseTime",
+				Converter: func(s string) any {
+					v, err := strconv.ParseFloat(s, 64)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					return v
+				},
+			},
+			{
+				Name:       "UserAgent",
+				SubexpName: "UserAgent",
+			},
+			{
+				Name:       "Protocol",
+				SubexpName: "Protocol",
+			},
+			{
+				Name:       "Method",
+				SubexpName: "Method",
+			},
+			{
+				Name:       "Url",
+				SubexpName: "Url",
+				Replacer: func(a any) any {
+					url := a.(string)
+					url = ulidLike.ReplaceAllLiteralString(url, "(ulid)")
+					url = uuidLike.ReplaceAllLiteralString(url, "(uuid)")
+
+					if strings.Contains(url, "?") {
+						splitted := strings.Split(url, "?")
+						path := splitted[0]
+
+						masked := []string{}
+						kvs := strings.Split(splitted[1], "&")
+						for _, kv := range kvs {
+							masked = append(masked, fmt.Sprintf("%s=*", strings.Split(kv, "=")[0]))
+						}
+
+						url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
+					}
+
+					return url
+				},
+			},
+		},
+		Keys: []akari.ParseColumnOption{
+			{Name: "Protocol"},
+			{Name: "Method"},
+			{Name: "Url"},
+		},
+	}
 	query := []akari.Aggregation{
 		{
 			Name:      "Count",
@@ -291,11 +278,11 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 			ValueType: akari.AggregationValueTypeString,
 		},
 	}
-	summary := parseLogRecords(r).Summarize(query)
+	summary := akari.Parse(parseOptions, r).Summarize(query)
 
 	prevSummary := akari.SummaryRecords{}
 	if prev != nil {
-		sm := parseLogRecords(prev).Summarize(query)
+		sm := akari.Parse(parseOptions, prev).Summarize(query)
 
 		prevSummary = sm
 	}
@@ -457,57 +444,44 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	data.WriteInText(w)
 }
 
-func parseDbLogRecords(r io.Reader) akari.LogRecords {
-	scanner := bufio.NewScanner(r)
-
-	logRecords := map[string]akari.LogRecordRows{}
-	md5Hash := md5.New()
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		tokens := dbQueryLoggerRegexp.FindStringSubmatch(line)
-
-		nanoSec, err := strconv.ParseInt(tokens[1], 10, 64)
-		if err != nil {
-			log.Fatal(err)
-		}
-		timestamp := time.Unix(nanoSec/1e9, nanoSec%1e9).Local()
-
-		elapsedInNano, err := strconv.Atoi(tokens[2])
-		if err != nil {
-			log.Fatal(err)
-		}
-		elapsed := float64(elapsedInNano) / 1e9
-
-		query := tokens[3]
-
-		key := []any{
-			query,
-		}
-		hashKey := string(md5Hash.Sum([]byte(fmt.Sprintf("%v", key))))
-
-		logRecords[hashKey] = append(logRecords[hashKey], []any{
-			timestamp,
-			elapsed,
-			query,
-		})
-	}
-
-	return akari.LogRecords{
-		Columns: []akari.LogRecordColumn{
-			{Name: "Timestamp"},
-			{Name: "Elapsed"},
-			{Name: "Query"},
-		},
-		KeyColumns: []akari.LogRecordColumn{
-			{Name: "Query"},
-		},
-		Records: logRecords,
-	}
-}
-
 func analyzeDbQueryLog(r io.Reader, w io.Writer) {
-	summary := parseDbLogRecords(r).Summarize([]akari.Aggregation{
+	parseOptions := akari.ParseOption{
+		RegExp: dbQueryLoggerRegexp,
+		Columns: []akari.ParseColumnOption{
+			{
+				Name:        "Timestamp",
+				SubexpIndex: 1,
+				Converter: func(s string) any {
+					nanoSec, err := strconv.ParseInt(s, 10, 64)
+					if err != nil {
+						log.Fatal(err)
+					}
+					timestamp := time.Unix(nanoSec/1e9, nanoSec%1e9).Local()
+
+					return timestamp
+				},
+			},
+			{
+				Name:        "Elapsed",
+				SubexpIndex: 2,
+				Converter: func(s string) any {
+					elapsedInNano, err := strconv.Atoi(s)
+					if err != nil {
+						log.Fatal(err)
+					}
+					elapsed := float64(elapsedInNano) / 1e9
+
+					return elapsed
+				},
+			},
+			{
+				Name:        "Query",
+				SubexpIndex: 3,
+			},
+		},
+		Keys: []akari.ParseColumnOption{{Name: "Query"}},
+	}
+	summary := akari.Parse(parseOptions, r).Summarize([]akari.Aggregation{
 		{
 			Name:      "Count",
 			From:      "Elapsed",
