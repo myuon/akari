@@ -24,10 +24,6 @@ func (c ParserColumnConverterConfig) Load() Converter {
 		return ConvertParseInt64{}
 	case "parseFloat64":
 		return ConvertParseFloat64{}
-	case "uuid":
-		return ConvertUuid{Replacer: c.Options["replacer"].(string)}
-	case "ulid":
-		return ConvertUlid{Replacer: c.Options["replacer"].(string)}
 	case "unixNano":
 		return ConvertUnixNano{}
 	case "unixMilli":

@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-var (
-	ulidLike = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
-	uuidLike = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-)
-
 type Converter interface {
 	Convert(any) any
 	ResultType() LogRecordType
@@ -62,30 +57,6 @@ func (c ConvertParseFloat64) Convert(a any) any {
 
 func (c ConvertParseFloat64) ResultType() LogRecordType {
 	return LogRecordTypeFloat64
-}
-
-type ConvertUlid struct {
-	Replacer string
-}
-
-func (c ConvertUlid) Convert(a any) any {
-	return ulidLike.ReplaceAllLiteralString(a.(string), c.Replacer)
-}
-
-func (c ConvertUlid) ResultType() LogRecordType {
-	return LogRecordTypeString
-}
-
-type ConvertUuid struct {
-	Replacer string
-}
-
-func (c ConvertUuid) Convert(a any) any {
-	return uuidLike.ReplaceAllLiteralString(a.(string), c.Replacer)
-}
-
-func (c ConvertUuid) ResultType() LogRecordType {
-	return LogRecordTypeString
 }
 
 type ConvertQueryParams struct {
