@@ -16,7 +16,6 @@
 				<th>DateTime</th>
 				<th>Name</th>
 				<th>Size</th>
-				<th>LogType</th>
 				<th>Peek</th>
 			</tr>
 		</thead>
@@ -28,7 +27,6 @@
 					<a href="/view?type={{ .LogType }}&file={{ .Path }}&prev={{ .PrevPath }}">{{ .Path }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
 				</td>
 				<td>{{ .SizeHuman }}</td>
-				<td>{{ .LogType }}</td>
 				<td><code>{{ .PeekString }}</code></td>
 			</tr>
 			{{ end }}
