@@ -431,7 +431,7 @@ func parseDbLogRecords(r io.Reader) akari.LogRecords {
 		if err != nil {
 			log.Fatal(err)
 		}
-		elapsed := float64(elapsedInNano) / 1e6
+		elapsed := float64(elapsedInNano) / 1e9
 
 		query := tokens[3]
 
