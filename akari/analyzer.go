@@ -107,8 +107,9 @@ func (c QueryFilterConfig) Load() QueryFilter {
 }
 
 type QueryFormatConfig struct {
-	Alignment string
-	Format    string
+	Alignment     string
+	Format        string
+	HumanizeBytes bool
 }
 
 type QueryConfig struct {
@@ -171,9 +172,10 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 	}
 	for _, query := range c.Query {
 		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions, FormatColumnOptions{
-			Name:      query.Name,
-			Format:    query.FormatOption.Format,
-			Alignment: query.FormatOption.Alignment,
+			Name:          query.Name,
+			Format:        query.FormatOption.Format,
+			Alignment:     query.FormatOption.Alignment,
+			HumanizeBytes: query.FormatOption.HumanizeBytes,
 		})
 	}
 
@@ -209,9 +211,10 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 		})
 
 		option := FormatColumnOptions{
-			Name:      add.Name,
-			Format:    add.FormatOption.Format,
-			Alignment: add.FormatOption.Alignment,
+			Name:          add.Name,
+			Format:        add.FormatOption.Format,
+			Alignment:     add.FormatOption.Alignment,
+			HumanizeBytes: add.FormatOption.HumanizeBytes,
 		}
 		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions[:add.At], append([]FormatColumnOptions{option}, formatOptions.ColumnOptions[add.At:]...)...)
 	}

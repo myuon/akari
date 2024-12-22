@@ -154,24 +154,28 @@ name = "TotalBs"
 from = "Bytes"
 valueType = "int"
 function = "sum"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MinBs"
 from = "Bytes"
 valueType = "int"
 function = "min"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MeanBs"
 from = "Bytes"
 valueType = "int"
 function = "mean"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MaxBs"
 from = "Bytes"
 valueType = "int"
 function = "max"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "Protocol"

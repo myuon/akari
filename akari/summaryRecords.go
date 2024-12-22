@@ -70,9 +70,10 @@ func (r *SummaryRecordKeyPairs) SortBy(sortKeys []int) {
 }
 
 type FormatColumnOptions struct {
-	Name      string
-	Format    string
-	Alignment string
+	Name          string
+	Format        string
+	Alignment     string
+	HumanizeBytes bool
 }
 
 type FormatOptions struct {
@@ -92,6 +93,9 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 			format := options.ColumnOptions[i].Format
 			if format == "" {
 				format = "%v"
+			}
+			if options.ColumnOptions[i].HumanizeBytes {
+				value = HumanizeBytes(value.(int))
 			}
 
 			row = append(row, fmt.Sprintf(format, value))
