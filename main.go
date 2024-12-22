@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	nginxLogRegexp      = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "(\S+) (\S+) ([^"]+)" (\d+) (\d+) "([^"]+)" "([^"]+)" (\S+)$`)
+	nginxLogRegexp      = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$`)
 	dbQueryLoggerRegexp = regexp.MustCompile(`^([0-9]{19})\s+([0-9]+)\s+(.*)$`)
 	ulidLike            = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
 	uuidLike            = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
@@ -38,24 +38,33 @@ func parseLogRecords(r io.Reader) akari.LogRecords {
 
 	md5Hash := md5.New()
 	records := map[string]akari.LogRecordRows{}
+
+	subexpNames := nginxLogRegexp.SubexpNames()
+	subexpIndexByName := map[string]int{}
+	for i, name := range subexpNames {
+		if name != "" {
+			subexpIndexByName[name] = i
+		}
+	}
+
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		tokens := parse(line)
 
-		method := tokens[4]
-		url := tokens[5]
-		protocol := tokens[6]
-		status, err := strconv.Atoi(tokens[7])
+		method := tokens[subexpIndexByName["Method"]]
+		url := tokens[subexpIndexByName["Url"]]
+		protocol := tokens[subexpIndexByName["Protocol"]]
+		status, err := strconv.Atoi(tokens[subexpIndexByName["Status"]])
 		if err != nil {
 			log.Fatal(err)
 		}
-		bytes, err := strconv.Atoi(tokens[8])
+		bytes, err := strconv.Atoi(tokens[subexpIndexByName["Bytes"]])
 		if err != nil {
 			log.Fatal(err)
 		}
-		userAgent := tokens[10]
-		responseTime, err := strconv.ParseFloat(tokens[11], 64)
+		userAgent := tokens[subexpIndexByName["UserAgent"]]
+		responseTime, err := strconv.ParseFloat(tokens[subexpIndexByName["ResponseTime"]], 64)
 		if err != nil {
 			log.Fatal(err)
 		}
