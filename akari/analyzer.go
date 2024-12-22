@@ -148,6 +148,7 @@ type AnalyzerConfig struct {
 	SortKeys     []string
 	Limit        int
 	AddColumn    []AddColumnConfig
+	Diffs        []string // shorthand for AddColumn
 }
 
 func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
@@ -222,6 +223,37 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 			HumanizeBytes: add.FormatOption.HumanizeBytes,
 		}
 		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions[:add.At], append([]FormatColumnOptions{option}, formatOptions.ColumnOptions[add.At:]...)...)
+	}
+	for _, from := range c.Diffs {
+		at := summary.GetIndex(from) + 1
+		summary.Insert(at, SummaryRecordColumn{Name: "(diff)"}, func(key string, row []any) any {
+			prevRecord, ok := prevSummary.Rows[key]
+			if ok {
+				if current, ok := row[summary.GetIndex(from)].(int); ok {
+					if prev, ok := prevRecord[prevSummary.GetIndex(from)].(int); ok {
+						if current > 0 && prev > 0 {
+							return (current - prev) * 100 / prev
+						}
+					}
+				} else if current, ok := row[summary.GetIndex(from)].(float64); ok {
+					if prev, ok := prevRecord[prevSummary.GetIndex(from)].(float64); ok {
+						if current > 0 && prev > 0 {
+							return int((current - prev) * 100 / prev)
+						}
+					}
+				}
+			}
+
+			return 0
+		})
+
+		option := FormatColumnOptions{
+			Name:          "(diff)",
+			Format:        "(%+d%%)",
+			Alignment:     TableColumnAlignmentLeft,
+			HumanizeBytes: false,
+		}
+		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions[:at], append([]FormatColumnOptions{option}, formatOptions.ColumnOptions[at:]...)...)
 	}
 
 	records := summary.GetKeyPairs()

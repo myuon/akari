@@ -3,6 +3,7 @@ name = "nginx"
 groupingKeys = ["Method", "Url", "Protocol"]
 sortKeys = ["Total"]
 limit = 100
+diffs = ["Count", "Total", "Mean"]
 
 [analyzers.parser]
 regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''
@@ -198,33 +199,13 @@ from = "Url"
 valueType = "string"
 function = "any"
 
-[[analyzers.addColumn]]
-name = "(diff)"
-at = 1
-type = "diff"
-from = "Count"
-formatOption = { alignment = "left", format = "(%+d%%)" }
-
-[[analyzers.addColumn]]
-name = "(diff)"
-at = 3
-type = "diff"
-from = "Total"
-formatOption = { alignment = "left", format = "(%+d%%)" }
-
-[[analyzers.addColumn]]
-name = "(diff)"
-at = 3
-type = "diff"
-from = "Mean"
-formatOption = { alignment = "left", format = "(%+d%%)" }
-
 
 [[analyzers]]
 name = "mysql"
 groupingKeys = ["Query"]
 sortKeys = ["Total"]
 limit = 100
+diffs = ["Total", "Mean"]
 
 [analyzers.parser]
 regexp = '''^([0-9]{19})\s+([0-9]+)\s+(.*)$'''
@@ -273,10 +254,3 @@ name = "Query"
 from = "Query"
 valueType = "string"
 function = "any"
-
-[[analyzers.addColumn]]
-name = "(diff)"
-at = 1
-type = "diff"
-from = "Count"
-formatOption = { alignment = "left", format = "(%+d%%)" }
