@@ -25,6 +25,7 @@ var (
 	dbQueryLoggerRegexp = regexp.MustCompile(`^([0-9]{19})\s+([0-9]+)\s+(.*)$`)
 	ulidLike            = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
 	uuidLike            = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+	sqlBulkClause       = regexp.MustCompile(`(\(\?(, \?)+\))`)
 )
 
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
@@ -473,6 +474,16 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 			{
 				Name:        "Query",
 				SubexpIndex: 3,
+				Replacer: func(a any) any {
+					query := a.(string)
+
+					if sqlBulkClause.Match([]byte(query)) {
+						whole := sqlBulkClause.FindStringSubmatch(query)[0]
+						query = strings.ReplaceAll(query, whole, "(?, ...)")
+					}
+
+					return query
+				},
 			},
 		},
 		Keys: []string{"Query"},
