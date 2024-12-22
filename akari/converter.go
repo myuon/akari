@@ -16,6 +16,7 @@ var (
 
 type Converter interface {
 	Convert(any) any
+	ResultType() LogRecordType
 }
 
 type ConvertParseInt struct{}
@@ -29,6 +30,10 @@ func (c ConvertParseInt) Convert(a any) any {
 	return i
 }
 
+func (c ConvertParseInt) ResultType() LogRecordType {
+	return LogRecordTypeInt
+}
+
 type ConvertParseInt64 struct{}
 
 func (c ConvertParseInt64) Convert(a any) any {
@@ -38,6 +43,10 @@ func (c ConvertParseInt64) Convert(a any) any {
 	}
 
 	return i
+}
+
+func (c ConvertParseInt64) ResultType() LogRecordType {
+	return LogRecordTypeInt64
 }
 
 type ConvertParseFloat64 struct{}
@@ -51,6 +60,10 @@ func (c ConvertParseFloat64) Convert(a any) any {
 	return f
 }
 
+func (c ConvertParseFloat64) ResultType() LogRecordType {
+	return LogRecordTypeFloat64
+}
+
 type ConvertUlid struct {
 	Replacer string
 }
@@ -59,12 +72,20 @@ func (c ConvertUlid) Convert(a any) any {
 	return ulidLike.ReplaceAllLiteralString(a.(string), c.Replacer)
 }
 
+func (c ConvertUlid) ResultType() LogRecordType {
+	return LogRecordTypeString
+}
+
 type ConvertUuid struct {
 	Replacer string
 }
 
 func (c ConvertUuid) Convert(a any) any {
 	return uuidLike.ReplaceAllLiteralString(a.(string), c.Replacer)
+}
+
+func (c ConvertUuid) ResultType() LogRecordType {
+	return LogRecordTypeString
 }
 
 type ConvertQueryParams struct {
@@ -90,6 +111,10 @@ func (c ConvertQueryParams) Convert(a any) any {
 	return url
 }
 
+func (c ConvertQueryParams) ResultType() LogRecordType {
+	return LogRecordTypeString
+}
+
 type ConvertUnixNano struct{}
 
 func (c ConvertUnixNano) Convert(a any) any {
@@ -97,6 +122,10 @@ func (c ConvertUnixNano) Convert(a any) any {
 
 	timestamp := time.Unix(nanoSec/1e9, nanoSec%1e9).Local()
 	return timestamp
+}
+
+func (c ConvertUnixNano) ResultType() LogRecordType {
+	return LogRecordTypeDateTime
 }
 
 type ConvertUnixMilli struct{}
@@ -108,6 +137,10 @@ func (c ConvertUnixMilli) Convert(a any) any {
 	return timestamp
 }
 
+func (c ConvertUnixMilli) ResultType() LogRecordType {
+	return LogRecordTypeDateTime
+}
+
 type ConvertUnix struct{}
 
 func (c ConvertUnix) Convert(a any) any {
@@ -115,6 +148,10 @@ func (c ConvertUnix) Convert(a any) any {
 
 	timestamp := time.Unix(sec, 0).Local()
 	return timestamp
+}
+
+func (c ConvertUnix) ResultType() LogRecordType {
+	return LogRecordTypeDateTime
 }
 
 type ConvertDiv struct {
@@ -125,6 +162,10 @@ func (c ConvertDiv) Convert(a any) any {
 	return float64(a.(int64)) / c.Divisor
 }
 
+func (c ConvertDiv) ResultType() LogRecordType {
+	return LogRecordTypeFloat64
+}
+
 type ConvertRegexpReplace struct {
 	RegExp   *regexp.Regexp
 	Replacer string
@@ -132,4 +173,8 @@ type ConvertRegexpReplace struct {
 
 func (c ConvertRegexpReplace) Convert(a any) any {
 	return c.RegExp.ReplaceAllString(a.(string), c.Replacer)
+}
+
+func (c ConvertRegexpReplace) ResultType() LogRecordType {
+	return LogRecordTypeString
 }

@@ -1,6 +1,7 @@
 package akari
 
 import (
+	"fmt"
 	"log"
 	"slices"
 )
@@ -109,36 +110,53 @@ type Query struct {
 	Filter    *QueryFilter
 }
 
-func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) any {
+func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, error) {
 	fromIndex := columns.GetIndex(a.From)
+	valueType := a.ValueType
+	if string(valueType) == "" {
+		switch columns[columns.GetIndex(a.From)].Type {
+		case LogRecordTypeDateTime:
+			fallthrough
+		case LogRecordTypeString:
+			valueType = QueryValueTypeString
+		case LogRecordTypeFloat64:
+			valueType = QueryValueTypeFloat64
+		case LogRecordTypeInt:
+			fallthrough
+		case LogRecordTypeInt64:
+			valueType = QueryValueTypeInt
+		default:
+			return nil, fmt.Errorf("Unknown value type: %v", columns[columns.GetIndex(a.From)].Type)
+		}
+	}
 
-	switch a.ValueType {
+	switch valueType {
 	case QueryValueTypeInt:
 		values := GetLogRecordsNumbers[int](records, fromIndex)
 		values = apply(a.Filter, values)
 
-		return evaluate(a.Function, values)
+		return evaluate(a.Function, values), nil
 	case QueryValueTypeInt64:
 		fallthrough
 	case QueryValueTypeFloat64:
 		values := GetLogRecordsNumbers[float64](records, fromIndex)
 		values = apply(a.Filter, values)
 
-		return evaluate(a.Function, values)
+		return evaluate(a.Function, values), nil
 	case QueryValueTypeString:
 		values := records.GetStrings(fromIndex)
 
 		switch a.Function {
 		case QueryFunctionCount:
-			return len(values)
+			return len(values), nil
 		case QueryFunctionAny:
-			return values[0]
+			return values[0], nil
 		default:
-			log.Fatalf("Unknown function: %v", a.Function)
+			return nil, fmt.Errorf("Unknown function: %v", a.Function)
 		}
 	default:
-		log.Fatalf("Unknown value type: %v", a.ValueType)
+		return nil, fmt.Errorf("Unknown value type: %v", valueType)
 	}
 
-	return nil
+	return nil, nil
 }

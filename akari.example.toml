@@ -53,77 +53,66 @@ converters = [{ type = "parseFloat64" }]
 [[analyzers.query]]
 name = "Count"
 from = "Url"
-valueType = "string"
 function = "count"
 formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "Total"
 from = "ResponseTime"
-valueType = "float64"
 function = "sum"
 formatOption = { alignment = "right", format = "%.3f" }
 
 [[analyzers.query]]
 name = "Mean"
 from = "ResponseTime"
-valueType = "float64"
 function = "mean"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Stddev"
 from = "ResponseTime"
-valueType = "float64"
 function = "stddev"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Min"
 from = "ResponseTime"
-valueType = "float64"
 function = "min"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P50"
 from = "ResponseTime"
-valueType = "float64"
 function = "p50"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P90"
 from = "ResponseTime"
-valueType = "float64"
 function = "p90"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P95"
 from = "ResponseTime"
-valueType = "float64"
 function = "p95"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P99"
 from = "ResponseTime"
-valueType = "float64"
 function = "p99"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Max"
 from = "ResponseTime"
-valueType = "float64"
 function = "max"
 formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "2xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 200, end = 300 } }
 formatOption = { alignment = "right" }
@@ -131,7 +120,6 @@ formatOption = { alignment = "right" }
 [[analyzers.query]]
 name = "3xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 300, end = 400 } }
 formatOption = { alignment = "right" }
@@ -139,7 +127,6 @@ formatOption = { alignment = "right" }
 [[analyzers.query]]
 name = "4xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 400, end = 500 } }
 formatOption = { alignment = "right" }
@@ -147,7 +134,6 @@ formatOption = { alignment = "right" }
 [[analyzers.query]]
 name = "5xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 500, end = 600 } }
 formatOption = { alignment = "right" }
@@ -155,48 +141,41 @@ formatOption = { alignment = "right" }
 [[analyzers.query]]
 name = "TotalBs"
 from = "Bytes"
-valueType = "int"
 function = "sum"
 formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MinBs"
 from = "Bytes"
-valueType = "int"
 function = "min"
 formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MeanBs"
 from = "Bytes"
-valueType = "int"
 function = "mean"
 formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MaxBs"
 from = "Bytes"
-valueType = "int"
 function = "max"
 formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "Protocol"
 from = "Protocol"
-valueType = "string"
 function = "any"
 
 [[analyzers.query]]
 name = "Method"
 from = "Method"
-valueType = "string"
 function = "any"
 formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "Url"
 from = "Url"
-valueType = "string"
 function = "any"
 
 
@@ -233,26 +212,22 @@ converters = [
 [[analyzers.query]]
 name = "Count"
 from = "Elapsed"
-valueType = "float64"
 function = "count"
 formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "Total"
 from = "Elapsed"
-valueType = "float64"
 function = "sum"
 formatOption = { alignment = "right", format = "%.3f" }
 
 [[analyzers.query]]
 name = "Mean"
 from = "Elapsed"
-valueType = "float64"
 function = "mean"
 formatOption = { alignment = "right", format = "%.3f" }
 
 [[analyzers.query]]
 name = "Query"
 from = "Query"
-valueType = "string"
 function = "any"

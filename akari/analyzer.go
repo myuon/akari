@@ -184,11 +184,17 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 	}
 
 	// parse, summarize
-	summary := Parse(parseOptions, r).Summarize(queryOptions)
+	summary, err := Parse(parseOptions, r).Summarize(queryOptions)
+	if err != nil {
+		log.Fatalf("Failed to summarize: %v", err)
+	}
 
 	prevSummary := SummaryRecords{}
 	if prev != nil {
-		prevSummary = Parse(parseOptions, prev).Summarize(queryOptions)
+		prevSummary, err = Parse(parseOptions, prev).Summarize(queryOptions)
+		if err != nil {
+			log.Fatalf("Failed to summarize: %v", err)
+		}
 	}
 
 	// transform

@@ -35,6 +35,7 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 		}
 	}
 
+	resultTypes := map[string]LogRecordType{}
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -51,8 +52,12 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 			value := tokens[index]
 
 			valueAny := any(value)
+
+			// Default type is string
+			resultTypes[column.Name] = LogRecordTypeString
 			for _, converter := range column.Converters {
 				valueAny = converter.Convert(valueAny)
+				resultTypes[column.Name] = converter.ResultType()
 			}
 
 			for _, columnKey := range options.Keys {
@@ -70,7 +75,10 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 
 	columns := []LogRecordColumn{}
 	for _, column := range options.Columns {
-		columns = append(columns, LogRecordColumn{Name: column.Name})
+		columns = append(columns, LogRecordColumn{
+			Name: column.Name,
+			Type: resultTypes[column.Name],
+		})
 	}
 
 	return LogRecords{

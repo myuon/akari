@@ -1,8 +1,22 @@
 package akari
 
+import "fmt"
+
+type LogRecordType string
+
+const (
+	LogRecordTypeInt      LogRecordType = "int"
+	LogRecordTypeInt64    LogRecordType = "int64"
+	LogRecordTypeFloat64  LogRecordType = "float64"
+	LogRecordTypeString   LogRecordType = "string"
+	LogRecordTypeDateTime LogRecordType = "datetime"
+)
+
 type LogRecordColumn struct {
 	Name string
+	Type LogRecordType
 }
+
 type LogRecordColumns []LogRecordColumn
 
 func (c LogRecordColumns) GetIndex(key string) int {
@@ -59,12 +73,17 @@ func (r LogRecordRows) GetStrings(index int) []string {
 	return strings
 }
 
-func (r LogRecords) Summarize(queries []Query) SummaryRecords {
+func (r LogRecords) Summarize(queries []Query) (SummaryRecords, error) {
 	summary := map[string][]any{}
 	for key, records := range r.Records {
 		row := []any{}
 		for _, query := range queries {
-			row = append(row, query.Apply(r.Columns, records))
+			value, err := query.Apply(r.Columns, records)
+			if err != nil {
+				return SummaryRecords{}, fmt.Errorf("Failed to apply query: %v (cause: %w)", query, err)
+			}
+
+			row = append(row, value)
 		}
 
 		summary[key] = row
@@ -78,5 +97,5 @@ func (r LogRecords) Summarize(queries []Query) SummaryRecords {
 	return SummaryRecords{
 		Columns: columns,
 		Rows:    summary,
-	}
+	}, nil
 }
