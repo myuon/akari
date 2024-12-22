@@ -33,14 +33,6 @@ func parse(line string) []string {
 	return nginxLogRegexp.FindStringSubmatch(line)
 }
 
-func getSum[T int | float64](values []T) T {
-	total := 0.0
-	for _, value := range values {
-		total += float64(value)
-	}
-	return T(total)
-}
-
 func getMean[T int | float64](values []T) T {
 	total := 0.0
 	for _, value := range values {
@@ -150,11 +142,11 @@ func parseLogRecords(r io.Reader) akari.LogRecords {
 func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 	summary := map[string][]any{}
 	for key, records := range logRecords.Records {
-		requestTimes := records.GetFloats(logRecords.GetIndex("ResponseTime"))
-		statuses := records.GetInts(logRecords.GetIndex("Status"))
-		bytesSlice := records.GetFloats(logRecords.GetIndex("Bytes"))
+		requestTimes := records.GetFloats(logRecords.Columns.GetIndex("ResponseTime"))
+		statuses := records.GetInts(logRecords.Columns.GetIndex("Status"))
+		bytesSlice := records.GetFloats(logRecords.Columns.GetIndex("Bytes"))
 
-		totalRequestTime := getSum(requestTimes)
+		totalRequestTime := akari.GetSum(requestTimes)
 
 		if totalRequestTime < 0.001 {
 			continue
@@ -192,13 +184,13 @@ func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 			status3xx,
 			status4xx,
 			status5xx,
-			getSum(bytesSlice),
+			akari.GetSum(bytesSlice),
 			slices.Min(bytesSlice),
 			getMean(bytesSlice),
 			slices.Max(bytesSlice),
-			records[0][logRecords.GetIndex("Protocol")].(string),
-			records[0][logRecords.GetIndex("Method")].(string),
-			records[0][logRecords.GetIndex("Url")].(string),
+			records[0][logRecords.Columns.GetIndex("Protocol")].(string),
+			records[0][logRecords.Columns.GetIndex("Method")].(string),
+			records[0][logRecords.Columns.GetIndex("Url")].(string),
 		}
 	}
 
@@ -451,35 +443,24 @@ func parseDbLogRecords(r io.Reader) akari.LogRecords {
 	}
 }
 
-func analyzeDbSummary(logRecords akari.LogRecords) akari.SummaryRecords {
-	summary := map[string][]any{}
-	for key, records := range logRecords.Records {
-		elapsedTimes := []float64{}
-		for _, record := range records {
-			elapsedTimes = append(elapsedTimes, record[logRecords.GetIndex("Elapsed")].(float64))
-		}
-
-		totalElapsed := getSum(elapsedTimes)
-
-		summary[key] = []any{
-			len(records),
-			totalElapsed,
-			records[0][logRecords.GetIndex("Query")].(string),
-		}
-	}
-
-	return akari.SummaryRecords{
-		Columns: []akari.SummaryRecordColumn{
-			{Name: "Count"},
-			{Name: "Total"},
-			{Name: "Query"},
-		},
-		Rows: summary,
-	}
-}
-
 func analyzeDbQueryLog(r io.Reader, w io.Writer) {
-	summary := analyzeDbSummary(parseDbLogRecords(r))
+	summary := parseDbLogRecords(r).Summarize([]akari.Aggregation{
+		{
+			Name:     "Count",
+			Function: akari.AggregationFunctionCount,
+		},
+		{
+			Name:      "Total",
+			From:      "Elapsed",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionSum,
+		},
+		{
+			Name:     "Query",
+			From:     "Query",
+			Function: akari.AggregationFunctionAny,
+		},
+	})
 
 	records := summary.GetKeyPairs()
 	records.SortBy([]int{summary.GetIndex("Total")})

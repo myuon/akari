@@ -3,24 +3,25 @@ package akari
 type LogRecordColumn struct {
 	Name string
 }
+type LogRecordColumns []LogRecordColumn
 
-type LogRecordRow []any
-type LogRecordRows []LogRecordRow
-
-type LogRecords struct {
-	Columns    []LogRecordColumn
-	KeyColumns []LogRecordColumn
-	Records    map[string]LogRecordRows
-}
-
-func (r LogRecords) GetIndex(key string) int {
-	for i, column := range r.Columns {
+func (c LogRecordColumns) GetIndex(key string) int {
+	for i, column := range c {
 		if column.Name == key {
 			return i
 		}
 	}
 
 	return -1
+}
+
+type LogRecordRow []any
+type LogRecordRows []LogRecordRow
+
+type LogRecords struct {
+	Columns    LogRecordColumns
+	KeyColumns []LogRecordColumn
+	Records    map[string]LogRecordRows
 }
 
 func (r LogRecordRows) GetFloats(index int) []float64 {
@@ -39,4 +40,26 @@ func (r LogRecordRows) GetInts(index int) []int {
 	}
 
 	return ints
+}
+
+func (r LogRecords) Summarize(queries []Aggregation) SummaryRecords {
+	summary := map[string][]any{}
+	for key, records := range r.Records {
+		row := []any{}
+		for _, query := range queries {
+			row = append(row, query.Apply(r.Columns, records))
+		}
+
+		summary[key] = row
+	}
+
+	columns := []SummaryRecordColumn{}
+	for _, q := range queries {
+		columns = append(columns, SummaryRecordColumn{Name: q.Name})
+	}
+
+	return SummaryRecords{
+		Columns: columns,
+		Rows:    summary,
+	}
 }
