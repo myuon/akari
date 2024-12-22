@@ -527,36 +527,14 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 	records := summary.GetKeyPairs()
 	records.SortBy([]int{summary.GetIndex("Total")})
 
-	rows := [][]string{}
-	for j, record := range records {
-		if j > 100 {
-			break
-		}
-
-		rows = append(rows, []string{
-			strconv.Itoa(record.Record[summary.GetIndex("Count")].(int)),
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Total")].(float64)),
-			record.Record[summary.GetIndex("Query")].(string),
-		})
-	}
-
-	data := akari.TableData{
-		Columns: []akari.TableColumn{
-			{
-				Name:      "Count",
-				Alignment: akari.TableColumnAlignmentRight,
-			},
-			{
-				Name:      "Total",
-				Alignment: akari.TableColumnAlignmentRight,
-			},
-			{
-				Name:      "Query",
-				Alignment: akari.TableColumnAlignmentLeft,
-			},
+	data := records.Format(akari.FormatOptions{
+		ColumnOptions: []akari.FormatColumnOptions{
+			{Name: "Count", Alignment: akari.TableColumnAlignmentRight},
+			{Name: "Total", Format: "%.3f", Alignment: akari.TableColumnAlignmentRight},
+			{Name: "Query", Alignment: akari.TableColumnAlignmentLeft},
 		},
-		Rows: rows,
-	}
+		Limit: 100,
+	})
 	data.WriteInText(w)
 }
 

@@ -1,6 +1,9 @@
 package akari
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 type SummaryRecordColumn struct {
 	Name string
@@ -56,4 +59,49 @@ func (r *SummaryRecordKeyPairs) SortBy(sortKeys []int) {
 	})
 
 	*r = records
+}
+
+type FormatColumnOptions struct {
+	Name      string
+	Format    string
+	Alignment string
+}
+
+type FormatOptions struct {
+	ColumnOptions []FormatColumnOptions
+	Limit         int
+}
+
+func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
+	rows := [][]string{}
+	for j, record := range r {
+		if options.Limit > 0 && j > options.Limit {
+			break
+		}
+
+		row := []string{}
+		for i, value := range record.Record {
+			format := options.ColumnOptions[i].Format
+			if format == "" {
+				format = "%v"
+			}
+
+			row = append(row, fmt.Sprintf(format, value))
+		}
+
+		rows = append(rows, row)
+	}
+
+	columns := []TableColumn{}
+	for _, column := range options.ColumnOptions {
+		columns = append(columns, TableColumn{
+			Name:      column.Name,
+			Alignment: column.Alignment,
+		})
+	}
+
+	return TableData{
+		Columns: columns,
+		Rows:    rows,
+	}
 }
