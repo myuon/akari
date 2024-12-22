@@ -16,6 +16,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/akamensky/argparse"
+	"github.com/fsnotify/fsnotify"
 	"github.com/myuon/akari/akari"
 )
 
@@ -23,7 +24,7 @@ var (
 	templateFiles  = template.Must(template.ParseGlob("templates/*.html"))
 	rootDir        = "."
 	configFilePath = "akari.toml"
-	config         = akari.AkariConfig{}
+	config         = akari.NewGlobalVar(akari.AkariConfig{})
 )
 
 type FileData struct {
@@ -92,7 +93,7 @@ func listFiles(root string) ([]FileData, error) {
 		}
 
 		logType := "unknown"
-		for _, analyzer := range config.Analyzers {
+		for _, analyzer := range config.Load().Analyzers {
 			if analyzer.Parser.RegExp.Match(line) {
 				logType = analyzer.Name
 				break
@@ -213,7 +214,7 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-	for _, analyzer := range config.Analyzers {
+	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
 			analyzer.Analyze(logFile, prevLogFile, w)
 			return
@@ -251,7 +252,42 @@ func main() {
 		rootDir = *logDir
 		configFilePath = *configFile
 
-		if _, err := toml.DecodeFile(configFilePath, &config); err != nil {
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer watcher.Close()
+
+		go func() {
+			for {
+				select {
+				case event, ok := <-watcher.Events:
+					if !ok {
+						return
+					}
+
+					if event.Name == configFilePath {
+						var c akari.AkariConfig
+						if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
+							log.Fatal(err)
+						}
+
+						slog.Info("Config reloaded")
+
+						config.Store(c)
+					}
+				}
+			}
+		}()
+
+		var c akari.AkariConfig
+		if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
+			log.Fatal(err)
+		}
+
+		config.Store(c)
+
+		if err := watcher.Add(configFilePath); err != nil {
 			log.Fatal(err)
 		}
 

@@ -3,6 +3,7 @@ package akari
 import (
 	"fmt"
 	"slices"
+	"sync"
 )
 
 func GetSum[T int | float64](values []T) T {
@@ -51,4 +52,25 @@ func HumanizeBytes(bytes int) string {
 	} else {
 		return fmt.Sprintf("%.1f  B", float64(bytes))
 	}
+}
+
+type GlobalVar[T any] struct {
+	Value T
+	*sync.Mutex
+}
+
+func NewGlobalVar[T any](value T) GlobalVar[T] {
+	return GlobalVar[T]{Value: value, Mutex: &sync.Mutex{}}
+}
+
+func (g *GlobalVar[T]) Store(value T) {
+	g.Mutex.Lock()
+	defer g.Mutex.Unlock()
+	g.Value = value
+}
+
+func (g *GlobalVar[T]) Load() T {
+	g.Mutex.Lock()
+	defer g.Mutex.Unlock()
+	return g.Value
 }

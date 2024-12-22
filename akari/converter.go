@@ -53,23 +53,23 @@ func (c ConvertParseFloat64) Convert(a any) any {
 }
 
 type ConvertUlid struct {
-	Tag string
+	Replacer string
 }
 
 func (c ConvertUlid) Convert(a any) any {
-	return ulidLike.ReplaceAllLiteralString(a.(string), c.Tag)
+	return ulidLike.ReplaceAllLiteralString(a.(string), c.Replacer)
 }
 
 type ConvertUuid struct {
-	Tag string
+	Replacer string
 }
 
 func (c ConvertUuid) Convert(a any) any {
-	return uuidLike.ReplaceAllLiteralString(a.(string), c.Tag)
+	return uuidLike.ReplaceAllLiteralString(a.(string), c.Replacer)
 }
 
 type ConvertQueryParams struct {
-	Tag string
+	Replacer string
 }
 
 func (c ConvertQueryParams) Convert(a any) any {
@@ -82,7 +82,7 @@ func (c ConvertQueryParams) Convert(a any) any {
 		masked := []string{}
 		kvs := strings.Split(splitted[1], "&")
 		for _, kv := range kvs {
-			masked = append(masked, fmt.Sprintf("%s=%v", strings.Split(kv, "=")[0], c.Tag))
+			masked = append(masked, fmt.Sprintf("%s=%v", strings.Split(kv, "=")[0], c.Replacer))
 		}
 
 		url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))

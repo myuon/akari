@@ -25,9 +25,9 @@ func (c ParserColumnConverterConfig) Load() Converter {
 	case "parseFloat64":
 		return ConvertParseFloat64{}
 	case "uuid":
-		return ConvertUuid{Tag: c.Options["tag"].(string)}
+		return ConvertUuid{Replacer: c.Options["replacer"].(string)}
 	case "ulid":
-		return ConvertUlid{Tag: c.Options["tag"].(string)}
+		return ConvertUlid{Replacer: c.Options["replacer"].(string)}
 	case "unixNano":
 		return ConvertUnixNano{}
 	case "unixMilli":
@@ -37,7 +37,7 @@ func (c ParserColumnConverterConfig) Load() Converter {
 	case "div":
 		return ConvertDiv{Divisor: c.Options["divisor"].(float64)}
 	case "queryParams":
-		return ConvertQueryParams{Tag: c.Options["tag"].(string)}
+		return ConvertQueryParams{Replacer: c.Options["replacer"].(string)}
 	case "mysqlBulkClause":
 		return ConvertMysqlBulkClause{}
 	case "regexp":

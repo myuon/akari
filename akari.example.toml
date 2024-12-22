@@ -16,9 +16,11 @@ converters = []
 name = "Url"
 specifier.name = "Url"
 converters = [
-  { type = "ulid", options = { tag = "(ulid)" } },
-  { type = "uuid", options = { tag = "(uuid)" } },
-  { type = "queryParams", options = { tag = "*" } },
+  { type = "ulid", options = { replacer = "(ulid)" } },
+  { type = "uuid", options = { replacer = "(uuid)" } },
+  { type = "queryParams", options = { replacer = "*" } },
+  { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
+  { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
 ]
 
 [[analyzers.parser.columns]]
