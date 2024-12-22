@@ -18,17 +18,17 @@ func GetMean[T int | float64](values []T) T {
 	return T(total / float64(len(values)))
 }
 
-func GetStddev(values []float64) float64 {
+func GetStddev[T int | float64](values []T) T {
 	mean := GetMean(values)
 	total := 0.0
 	for _, value := range values {
-		total += (value - mean) * (value - mean)
+		total += float64((value - mean) * (value - mean))
 	}
-	return total / float64(len(values))
+	return T(total / float64(len(values)))
 }
 
-func GetPercentile(values_ []float64, percentile int) float64 {
-	values := append([]float64{}, values_...)
+func GetPercentile[T int | float64](values_ []T, percentile int) T {
+	values := append([]T{}, values_...)
 
 	slices.Sort(values)
 

@@ -197,11 +197,179 @@ func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 }
 
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
-	summary := analyzeSummary(parseLogRecords(r))
+	query := []akari.Aggregation{
+		{
+			Name:      "Count",
+			Function:  akari.AggregationFunctionCount,
+			ValueType: akari.AggregationValueTypeFloat64,
+			From:      "ResponseTime",
+		},
+		{
+			Name:      "Total",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionSum,
+		},
+		{
+			Name:      "Mean",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionMean,
+		},
+		{
+			Name:      "Stddev",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionStddev,
+		},
+		{
+			Name:      "Min",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionMin,
+		},
+		{
+			Name:      "P50",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionP50,
+		},
+		{
+			Name:      "P90",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionP90,
+		},
+		{
+			Name:      "P95",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionP95,
+		},
+		{
+			Name:      "P99",
+			From:      "ResponseTime",
+			ValueType: akari.AggregationValueTypeFloat64,
+			Function:  akari.AggregationFunctionP99,
+		},
+		{
+			Name:      "Max",
+			From:      "ResponseTime",
+			Function:  akari.AggregationFunctionMax,
+			ValueType: akari.AggregationValueTypeFloat64,
+		},
+		{
+			Name:      "2xx",
+			From:      "Status",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionCount,
+			Filter: &akari.AggregationFilter{
+				Type: akari.AggregationFilterTypeBetween,
+				Between: struct {
+					Start float64
+					End   float64
+				}{
+					Start: 200,
+					End:   300,
+				},
+			},
+		},
+		{
+			Name:      "3xx",
+			From:      "Status",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionCount,
+			Filter: &akari.AggregationFilter{
+				Type: akari.AggregationFilterTypeBetween,
+				Between: struct {
+					Start float64
+					End   float64
+				}{
+					Start: 300,
+					End:   400,
+				},
+			},
+		},
+		{
+			Name:      "4xx",
+			From:      "Status",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionCount,
+			Filter: &akari.AggregationFilter{
+				Type: akari.AggregationFilterTypeBetween,
+				Between: struct {
+					Start float64
+					End   float64
+				}{
+					Start: 400,
+					End:   500,
+				},
+			},
+		},
+		{
+			Name:      "5xx",
+			From:      "Status",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionCount,
+			Filter: &akari.AggregationFilter{
+				Type: akari.AggregationFilterTypeBetween,
+				Between: struct {
+					Start float64
+					End   float64
+				}{
+					Start: 500,
+					End:   600,
+				},
+			},
+		},
+		{
+			Name:      "TotalBytes",
+			From:      "Bytes",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionSum,
+		},
+		{
+			Name:      "MinBytes",
+			From:      "Bytes",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionMin,
+		},
+		{
+			Name:      "MeanBytes",
+			From:      "Bytes",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionMean,
+		},
+		{
+			Name:      "MaxBytes",
+			From:      "Bytes",
+			ValueType: akari.AggregationValueTypeInt,
+			Function:  akari.AggregationFunctionMax,
+		},
+		{
+			Name:      "Protocol",
+			From:      "Protocol",
+			ValueType: akari.AggregationValueTypeString,
+			Function:  akari.AggregationFunctionAny,
+		},
+		{
+			Name:      "Method",
+			Function:  akari.AggregationFunctionAny,
+			From:      "Method",
+			ValueType: akari.AggregationValueTypeString,
+		},
+		{
+			Name:      "Url",
+			Function:  akari.AggregationFunctionAny,
+			From:      "Url",
+			ValueType: akari.AggregationValueTypeString,
+		},
+	}
+	summary := parseLogRecords(r).Summarize(query)
 
 	prevSummary := akari.SummaryRecords{}
 	if prev != nil {
-		sm := analyzeSummary(parseLogRecords(prev))
+		sm := parseLogRecords(prev).Summarize(query)
 
 		prevSummary = sm
 	}
@@ -420,8 +588,10 @@ func parseDbLogRecords(r io.Reader) akari.LogRecords {
 func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 	summary := parseDbLogRecords(r).Summarize([]akari.Aggregation{
 		{
-			Name:     "Count",
-			Function: akari.AggregationFunctionCount,
+			Name:      "Count",
+			From:      "Elapsed",
+			Function:  akari.AggregationFunctionCount,
+			ValueType: akari.AggregationValueTypeFloat64,
 		},
 		{
 			Name:      "Total",
@@ -430,9 +600,10 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 			Function:  akari.AggregationFunctionSum,
 		},
 		{
-			Name:     "Query",
-			From:     "Query",
-			Function: akari.AggregationFunctionAny,
+			Name:      "Query",
+			From:      "Query",
+			Function:  akari.AggregationFunctionAny,
+			ValueType: akari.AggregationValueTypeString,
 		},
 	})
 

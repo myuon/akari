@@ -42,6 +42,15 @@ func (r LogRecordRows) GetInts(index int) []int {
 	return ints
 }
 
+func (r LogRecordRows) GetStrings(index int) []string {
+	strings := []string{}
+	for _, record := range r {
+		strings = append(strings, record[index].(string))
+	}
+
+	return strings
+}
+
 func (r LogRecords) Summarize(queries []Aggregation) SummaryRecords {
 	summary := map[string][]any{}
 	for key, records := range r.Records {
