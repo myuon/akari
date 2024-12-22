@@ -188,8 +188,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		Title: "Akari",
 		Files: entries,
 	}
-	err = templateFiles.ExecuteTemplate(w, "files.html", pageData)
-	if err != nil {
+	if err = templateFiles.ExecuteTemplate(w, "files.html", pageData); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		log.Println("Template execution error:", err)
 		return
@@ -240,16 +239,23 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		prevLogFile = nil
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
+	tableData := akari.TableData{}
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
-			analyzer.Analyze(logFile, prevLogFile, w)
-			return
+			tableData = analyzer.Analyze(logFile, prevLogFile)
+			break
 		}
 	}
 
-	http.Error(w, "Unknown log type", http.StatusBadRequest)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err = templateFiles.ExecuteTemplate(w, "view.html", map[string]any{
+		"Title":     filePath,
+		"TableData": tableData,
+	}); err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		log.Println("Template execution error:", err)
+		return
+	}
 }
 
 func main() {

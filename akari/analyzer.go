@@ -152,7 +152,7 @@ type AnalyzerConfig struct {
 	Diffs        []string // shorthand for AddColumn
 }
 
-func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
+func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 	parseOptions := ParseOption{
 		RegExp:  c.Parser.RegExp,
 		Columns: c.Parser.Columns.Load(),
@@ -278,10 +278,7 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 	records.SortBy(orderKeyIndexes)
 
 	// format
-	data := records.Format(formatOptions)
-
-	// output
-	data.WriteInText(w)
+	return records.Format(formatOptions)
 }
 
 type AkariConfig struct {

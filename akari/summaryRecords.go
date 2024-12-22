@@ -89,13 +89,13 @@ type FormatOptions struct {
 }
 
 func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
-	rows := [][]string{}
+	rows := [][]TableCell{}
 	for j, record := range r.Entries {
 		if options.Limit > 0 && j > options.Limit {
 			break
 		}
 
-		row := []string{}
+		row := []TableCell{}
 		for i, value := range record.Record {
 			format := options.ColumnOptions[i].Format
 			if format == "" {
@@ -109,7 +109,19 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 				value = HumanizeBytes(value.(int))
 			}
 
-			row = append(row, fmt.Sprintf(format, value))
+			alignment := options.ColumnOptions[i].Alignment
+			if alignment == "" {
+				if r.Columns[i].Type.IsNumeric() {
+					alignment = TableColumnAlignmentRight
+				} else {
+					alignment = TableColumnAlignmentLeft
+				}
+			}
+
+			row = append(row, TableCell{
+				Value:     fmt.Sprintf(format, value),
+				Alignment: alignment,
+			})
 		}
 
 		rows = append(rows, row)

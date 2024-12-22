@@ -15,9 +15,14 @@ type TableColumn struct {
 	Alignment string
 }
 
+type TableCell struct {
+	Value     string
+	Alignment string
+}
+
 type TableData struct {
 	Columns []TableColumn
-	Rows    [][]string
+	Rows    [][]TableCell
 }
 
 func (d TableData) WriteInText(w io.Writer) {
@@ -35,8 +40,8 @@ func (d TableData) WriteInText(w io.Writer) {
 	for _, row := range d.Rows {
 		tableRow := []string{}
 		for i := range d.Columns {
-			tableRow = append(tableRow, row[i])
-			widths[i] = max(widths[i], len(row[i]))
+			tableRow = append(tableRow, row[i].Value)
+			widths[i] = max(widths[i], len(row[i].Value))
 		}
 
 		table = append(table, tableRow)
