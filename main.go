@@ -291,66 +291,49 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 		prevSummary = sm
 	}
 
+	summary.Insert(1, akari.SummaryRecordColumn{Name: "(diff)"}, func(key string, row []any) any {
+		prevRecord, ok := prevSummary.Rows[key]
+		if ok {
+			current := row[summary.GetIndex("Count")].(int)
+			prev := prevRecord[prevSummary.GetIndex("Count")].(int)
+
+			return (current - prev) * 100 / prev
+		}
+
+		return 0
+	})
+	summary.Insert(3, akari.SummaryRecordColumn{Name: "(diff)"}, func(key string, row []any) any {
+		prevRecord, ok := prevSummary.Rows[key]
+		if ok {
+			current := row[summary.GetIndex("Total")].(float64)
+			prev := prevRecord[prevSummary.GetIndex("Total")].(float64)
+
+			if prev > 0 && current > 0 {
+				return int((current - prev) * 100 / prev)
+			}
+		}
+
+		return 0
+	})
+	summary.Insert(5, akari.SummaryRecordColumn{Name: "(diff)"}, func(key string, row []any) any {
+		prevRecord, ok := prevSummary.Rows[key]
+		if ok {
+			current := row[summary.GetIndex("Mean")].(float64)
+			prev := prevRecord[prevSummary.GetIndex("Mean")].(float64)
+
+			if prev > 0 && current > 0 {
+				return int((current - prev) * 100 / prev)
+			}
+		}
+
+		return 0
+	})
+
 	records := summary.GetKeyPairs()
 	records.SortBy([]int{summary.GetIndex("Total")})
 
-	rows := [][]string{}
-
-	for j, record := range records {
-		if j > 100 {
-			break
-		}
-
-		prevRecord, ok := prevSummary.Rows[record.Key]
-
-		countDiff := ""
-		if ok {
-			countIndex := summary.GetIndex("Count")
-			countDiff = fmt.Sprintf("(%+d%%)", (record.Record[countIndex].(int)-prevRecord[countIndex].(int))*100/prevRecord[countIndex].(int))
-		}
-
-		totalDiff := ""
-		if ok {
-			totalIndex := summary.GetIndex("Total")
-			totalDiff = fmt.Sprintf("(%+d%%)", int((record.Record[totalIndex].(float64)-prevRecord[totalIndex].(float64))*100/prevRecord[totalIndex].(float64)))
-		}
-
-		meanDiff := ""
-		if ok {
-			meanIndex := summary.GetIndex("Mean")
-			meanDiff = fmt.Sprintf("(%+d%%)", int((record.Record[meanIndex].(float64)-prevRecord[meanIndex].(float64))*100/prevRecord[meanIndex].(float64)))
-		}
-
-		rows = append(rows, []string{
-			strconv.Itoa(record.Record[summary.GetIndex("Count")].(int)),
-			countDiff,
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Total")].(float64)),
-			totalDiff,
-			fmt.Sprintf("%.4f", record.Record[summary.GetIndex("Mean")].(float64)),
-			meanDiff,
-			fmt.Sprintf("%.4f", record.Record[summary.GetIndex("Stddev")].(float64)),
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Min")].(float64)),
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P50")].(float64)),
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P90")].(float64)),
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P95")].(float64)),
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("P99")].(float64)),
-			fmt.Sprintf("%.3f", record.Record[summary.GetIndex("Max")].(float64)),
-			strconv.Itoa(record.Record[summary.GetIndex("2xx")].(int)),
-			strconv.Itoa(record.Record[summary.GetIndex("3xx")].(int)),
-			strconv.Itoa(record.Record[summary.GetIndex("4xx")].(int)),
-			strconv.Itoa(record.Record[summary.GetIndex("5xx")].(int)),
-			humanize.Bytes(uint64(record.Record[summary.GetIndex("TotalBytes")].(int))),
-			humanize.Bytes(uint64(record.Record[summary.GetIndex("MinBytes")].(int))),
-			humanize.Bytes(uint64(record.Record[summary.GetIndex("MeanBytes")].(int))),
-			humanize.Bytes(uint64(record.Record[summary.GetIndex("MaxBytes")].(int))),
-			record.Record[summary.GetIndex("Protocol")].(string),
-			record.Record[summary.GetIndex("Method")].(string),
-			record.Record[summary.GetIndex("Url")].(string),
-		})
-	}
-
-	data := akari.TableData{
-		Columns: []akari.TableColumn{
+	data := records.Format(akari.FormatOptions{
+		ColumnOptions: []akari.FormatColumnOptions{
 			{
 				Name:      "Count",
 				Alignment: akari.TableColumnAlignmentRight,
@@ -358,50 +341,62 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 			{
 				Name:      "(diff)",
 				Alignment: akari.TableColumnAlignmentLeft,
+				Format:    "(%+d%%)",
 			},
 			{
 				Name:      "Total",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.3f",
 			},
 			{
 				Name:      "(diff)",
 				Alignment: akari.TableColumnAlignmentLeft,
+				Format:    "(%+d%%)",
 			},
 			{
 				Name:      "Mean",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.4f",
 			},
 			{
 				Name:      "(diff)",
 				Alignment: akari.TableColumnAlignmentLeft,
+				Format:    "(%+d%%)",
 			},
 			{
 				Name:      "Stddev",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.4f",
 			},
 			{
 				Name:      "Min",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.3f",
 			},
 			{
 				Name:      "P50",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.3f",
 			},
 			{
 				Name:      "P90",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.3f",
 			},
 			{
 				Name:      "P95",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.3f",
 			},
 			{
 				Name:      "P99",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.3f",
 			},
 			{
 				Name:      "Max",
 				Alignment: akari.TableColumnAlignmentRight,
+				Format:    "%.3f",
 			},
 			{
 				Name:      "2xx",
@@ -448,8 +443,8 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 				Alignment: akari.TableColumnAlignmentLeft,
 			},
 		},
-		Rows: rows,
-	}
+		Limit: 100,
+	})
 	data.WriteInText(w)
 }
 
