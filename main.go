@@ -104,11 +104,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 				},
 			},
 		},
-		Keys: []akari.ParseColumnOption{
-			{Name: "Protocol"},
-			{Name: "Method"},
-			{Name: "Url"},
-		},
+		Keys: []string{"Protocol", "Method", "Url"},
 	}
 	query := []akari.Aggregation{
 		{
@@ -479,7 +475,7 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 				SubexpIndex: 3,
 			},
 		},
-		Keys: []akari.ParseColumnOption{{Name: "Query"}},
+		Keys: []string{"Query"},
 	}
 	summary := akari.Parse(parseOptions, r).Summarize([]akari.Aggregation{
 		{

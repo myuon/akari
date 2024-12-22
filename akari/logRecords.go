@@ -19,9 +19,8 @@ type LogRecordRow []any
 type LogRecordRows []LogRecordRow
 
 type LogRecords struct {
-	Columns    LogRecordColumns
-	KeyColumns []LogRecordColumn
-	Records    map[string]LogRecordRows
+	Columns LogRecordColumns
+	Records map[string]LogRecordRows
 }
 
 func (r LogRecordRows) GetFloats(index int) []float64 {

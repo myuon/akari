@@ -19,7 +19,7 @@ type ParseColumnOption struct {
 type ParseOption struct {
 	RegExp  *regexp.Regexp
 	Columns []ParseColumnOption
-	Keys    []ParseColumnOption
+	Keys    []string
 }
 
 func Parse(options ParseOption, r io.Reader) LogRecords {
@@ -62,7 +62,7 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 
 			valueAny := replace(convert(value))
 			for _, columnKey := range options.Keys {
-				if columnKey.Name == column.Name {
+				if columnKey == column.Name {
 					key = append(key, valueAny)
 				}
 			}
@@ -80,8 +80,7 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 	}
 
 	return LogRecords{
-		Columns:    columns,
-		KeyColumns: []LogRecordColumn{},
-		Records:    records,
+		Columns: columns,
+		Records: records,
 	}
 }
