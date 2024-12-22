@@ -114,7 +114,6 @@ type QueryFormatConfig struct {
 type QueryConfig struct {
 	Name         string
 	From         string
-	ValueType    QueryValueType
 	Function     QueryFunction
 	Filter       *QueryFilterConfig
 	FormatOption QueryFormatConfig
@@ -160,11 +159,10 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 		}
 
 		queryOptions = append(queryOptions, Query{
-			Name:      query.Name,
-			From:      query.From,
-			ValueType: query.ValueType,
-			Function:  query.Function,
-			Filter:    filter,
+			Name:     query.Name,
+			From:     query.From,
+			Function: query.Function,
+			Filter:   filter,
 		})
 	}
 	formatOptions := FormatOptions{

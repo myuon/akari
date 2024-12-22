@@ -6,15 +6,6 @@ import (
 	"slices"
 )
 
-type QueryValueType string
-
-const (
-	QueryValueTypeInt     QueryValueType = "int"
-	QueryValueTypeInt64   QueryValueType = "int64"
-	QueryValueTypeFloat64 QueryValueType = "float64"
-	QueryValueTypeString  QueryValueType = "string"
-)
-
 type QueryFunction string
 
 const (
@@ -103,47 +94,30 @@ func apply[T int | float64](f *QueryFilter, values []T) []T {
 }
 
 type Query struct {
-	Name      string
-	From      string
-	ValueType QueryValueType
-	Function  QueryFunction
-	Filter    *QueryFilter
+	Name     string
+	From     string
+	Function QueryFunction
+	Filter   *QueryFilter
 }
 
 func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, error) {
 	fromIndex := columns.GetIndex(a.From)
-	valueType := a.ValueType
-	if string(valueType) == "" {
-		switch columns[columns.GetIndex(a.From)].Type {
-		case LogRecordTypeDateTime:
-			fallthrough
-		case LogRecordTypeString:
-			valueType = QueryValueTypeString
-		case LogRecordTypeFloat64:
-			valueType = QueryValueTypeFloat64
-		case LogRecordTypeInt:
-			fallthrough
-		case LogRecordTypeInt64:
-			valueType = QueryValueTypeInt
-		default:
-			return nil, fmt.Errorf("Unknown value type: %v", columns[columns.GetIndex(a.From)].Type)
-		}
-	}
+	valueType := columns[columns.GetIndex(a.From)].Type
 
 	switch valueType {
-	case QueryValueTypeInt:
+	case LogRecordTypeInt:
 		values := GetLogRecordsNumbers[int](records, fromIndex)
 		values = apply(a.Filter, values)
 
 		return evaluate(a.Function, values), nil
-	case QueryValueTypeInt64:
+	case LogRecordTypeInt64:
 		fallthrough
-	case QueryValueTypeFloat64:
+	case LogRecordTypeFloat64:
 		values := GetLogRecordsNumbers[float64](records, fromIndex)
 		values = apply(a.Filter, values)
 
 		return evaluate(a.Function, values), nil
-	case QueryValueTypeString:
+	case LogRecordTypeString:
 		values := records.GetStrings(fromIndex)
 
 		switch a.Function {
@@ -157,6 +131,4 @@ func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, erro
 	default:
 		return nil, fmt.Errorf("Unknown value type: %v", valueType)
 	}
-
-	return nil, nil
 }
