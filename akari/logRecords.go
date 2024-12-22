@@ -50,7 +50,7 @@ func (r LogRecordRows) GetStrings(index int) []string {
 	return strings
 }
 
-func (r LogRecords) Summarize(queries []Aggregation) SummaryRecords {
+func (r LogRecords) Summarize(queries []Query) SummaryRecords {
 	summary := map[string][]any{}
 	for key, records := range r.Records {
 		row := []any{}
