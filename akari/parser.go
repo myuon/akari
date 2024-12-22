@@ -12,8 +12,7 @@ type ParseColumnOption struct {
 	Name        string
 	SubexpName  string
 	SubexpIndex int
-	Converter   func(string) any
-	Replacer    func(any) any
+	Converters  []Converter
 }
 
 type ParseOption struct {
@@ -51,16 +50,11 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 			}
 			value := tokens[index]
 
-			convert := column.Converter
-			replace := column.Replacer
-			if column.Converter == nil {
-				convert = func(s string) any { return s }
-			}
-			if column.Replacer == nil {
-				replace = func(a any) any { return a }
+			valueAny := any(value)
+			for _, converter := range column.Converters {
+				valueAny = converter.Convert(valueAny)
 			}
 
-			valueAny := replace(convert(value))
 			for _, columnKey := range options.Keys {
 				if columnKey == column.Name {
 					key = append(key, valueAny)

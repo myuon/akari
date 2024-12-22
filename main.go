@@ -23,9 +23,6 @@ import (
 var (
 	nginxLogRegexp      = regexp.MustCompile(`^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$`)
 	dbQueryLoggerRegexp = regexp.MustCompile(`^([0-9]{19})\s+([0-9]+)\s+(.*)$`)
-	ulidLike            = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
-	uuidLike            = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-	sqlBulkClause       = regexp.MustCompile(`(\(\?(, \?)+\))`)
 )
 
 func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
@@ -35,38 +32,17 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 			{
 				Name:       "Status",
 				SubexpName: "Status",
-				Converter: func(s string) any {
-					v, err := strconv.Atoi(s)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					return v
-				},
+				Converters: []akari.Converter{akari.ConvertParseInt{}},
 			},
 			{
 				Name:       "Bytes",
 				SubexpName: "Bytes",
-				Converter: func(s string) any {
-					v, err := strconv.Atoi(s)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					return v
-				},
+				Converters: []akari.Converter{akari.ConvertParseInt{}},
 			},
 			{
 				Name:       "ResponseTime",
 				SubexpName: "ResponseTime",
-				Converter: func(s string) any {
-					v, err := strconv.ParseFloat(s, 64)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					return v
-				},
+				Converters: []akari.Converter{akari.ConvertParseFloat64{}},
 			},
 			{
 				Name:       "UserAgent",
@@ -83,25 +59,10 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 			{
 				Name:       "Url",
 				SubexpName: "Url",
-				Replacer: func(a any) any {
-					url := a.(string)
-					url = ulidLike.ReplaceAllLiteralString(url, "(ulid)")
-					url = uuidLike.ReplaceAllLiteralString(url, "(uuid)")
-
-					if strings.Contains(url, "?") {
-						splitted := strings.Split(url, "?")
-						path := splitted[0]
-
-						masked := []string{}
-						kvs := strings.Split(splitted[1], "&")
-						for _, kv := range kvs {
-							masked = append(masked, fmt.Sprintf("%s=*", strings.Split(kv, "=")[0]))
-						}
-
-						url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
-					}
-
-					return url
+				Converters: []akari.Converter{
+					akari.ConvertUlid{Tag: "(ulid)"},
+					akari.ConvertUuid{Tag: "(uuid)"},
+					akari.ConvertQueryParms{Tag: "*"},
 				},
 			},
 		},
@@ -448,42 +409,17 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 			{
 				Name:        "Timestamp",
 				SubexpIndex: 1,
-				Converter: func(s string) any {
-					nanoSec, err := strconv.ParseInt(s, 10, 64)
-					if err != nil {
-						log.Fatal(err)
-					}
-					timestamp := time.Unix(nanoSec/1e9, nanoSec%1e9).Local()
-
-					return timestamp
-				},
+				Converters:  []akari.Converter{akari.ConvertParseInt64{}, akari.ConvertUnixNano{}},
 			},
 			{
 				Name:        "Elapsed",
 				SubexpIndex: 2,
-				Converter: func(s string) any {
-					elapsedInNano, err := strconv.Atoi(s)
-					if err != nil {
-						log.Fatal(err)
-					}
-					elapsed := float64(elapsedInNano) / 1e9
-
-					return elapsed
-				},
+				Converters:  []akari.Converter{akari.ConvertParseInt64{}, akari.ConvertDiv{Divisor: 1e9}},
 			},
 			{
 				Name:        "Query",
 				SubexpIndex: 3,
-				Replacer: func(a any) any {
-					query := a.(string)
-
-					if sqlBulkClause.Match([]byte(query)) {
-						whole := sqlBulkClause.FindStringSubmatch(query)[0]
-						query = strings.ReplaceAll(query, whole, "(?, ...)")
-					}
-
-					return query
-				},
+				Converters:  []akari.Converter{akari.ConvertMysqlBulkClause{}},
 			},
 		},
 		Keys: []string{"Query"},
