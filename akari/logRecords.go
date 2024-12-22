@@ -23,6 +23,15 @@ type LogRecords struct {
 	Records map[string]LogRecordRows
 }
 
+func GetLogRecordsNumbers[T int | float64](records LogRecordRows, index int) []T {
+	numbers := []T{}
+	for _, record := range records {
+		numbers = append(numbers, record[index].(T))
+	}
+
+	return numbers
+}
+
 func (r LogRecordRows) GetFloats(index int) []float64 {
 	floats := []float64{}
 	for _, record := range r {

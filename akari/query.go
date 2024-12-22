@@ -30,6 +30,37 @@ const (
 	QueryFunctionAny    QueryFunction = "any"
 )
 
+func evaluate[T int | float64](f QueryFunction, values []T) any {
+	switch f {
+	case QueryFunctionCount:
+		return len(values)
+	case QueryFunctionSum:
+		return GetSum(values)
+	case QueryFunctionAny:
+		return values[0]
+	case QueryFunctionMean:
+		return GetMean(values)
+	case QueryFunctionStddev:
+		return GetStddev(values)
+	case QueryFunctionMax:
+		return slices.Max(values)
+	case QueryFunctionMin:
+		return slices.Min(values)
+	case QueryFunctionP50:
+		return GetPercentile(values, 50)
+	case QueryFunctionP90:
+		return GetPercentile(values, 90)
+	case QueryFunctionP95:
+		return GetPercentile(values, 95)
+	case QueryFunctionP99:
+		return GetPercentile(values, 99)
+	default:
+		log.Fatalf("Unknown function: %v", f)
+	}
+
+	return 0
+}
+
 type QueryFilterType string
 
 const (
@@ -44,10 +75,10 @@ type QueryFilter struct {
 	}
 }
 
-func (f QueryFilter) ApplyRowInt(value int) bool {
+func applyRow[T int | float64](f QueryFilter, value T) bool {
 	switch f.Type {
 	case QueryFilterTypeBetween:
-		return value >= int(f.Between.Start) && value <= int(f.Between.End)
+		return float64(value) >= f.Between.Start && float64(value) <= f.Between.End
 	default:
 		log.Fatalf("Unknown filter type: %v", f.Type)
 	}
@@ -55,40 +86,14 @@ func (f QueryFilter) ApplyRowInt(value int) bool {
 	return false
 }
 
-func (f QueryFilter) ApplyRowFloat64(value float64) bool {
-	switch f.Type {
-	case QueryFilterTypeBetween:
-		return value >= f.Between.Start && value <= f.Between.End
-	default:
-		log.Fatalf("Unknown filter type: %v", f.Type)
-	}
-
-	return false
-}
-
-func (f *QueryFilter) ApplyInt(values []int) []int {
+func apply[T int | float64](f *QueryFilter, values []T) []T {
 	if f == nil {
 		return values
 	}
 
-	filtered := []int{}
+	filtered := []T{}
 	for _, value := range values {
-		if f.ApplyRowInt(value) {
-			filtered = append(filtered, value)
-		}
-	}
-
-	return filtered
-}
-
-func (f *QueryFilter) ApplyFloat64(values []float64) []float64 {
-	if f == nil {
-		return values
-	}
-
-	filtered := []float64{}
-	for _, value := range values {
-		if f.ApplyRowFloat64(value) {
+		if applyRow(*f, value) {
 			filtered = append(filtered, value)
 		}
 	}
@@ -109,67 +114,17 @@ func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) any {
 
 	switch a.ValueType {
 	case QueryValueTypeInt:
-		fallthrough
+		values := GetLogRecordsNumbers[int](records, fromIndex)
+		values = apply(a.Filter, values)
+
+		return evaluate(a.Function, values)
 	case QueryValueTypeInt64:
-		values := records.GetInts(fromIndex)
-		values = a.Filter.ApplyInt(values)
-
-		switch a.Function {
-		case QueryFunctionCount:
-			return len(values)
-		case QueryFunctionSum:
-			return GetSum(values)
-		case QueryFunctionAny:
-			return values[0]
-		case QueryFunctionMean:
-			return GetMean(values)
-		case QueryFunctionStddev:
-			return GetStddev(values)
-		case QueryFunctionMax:
-			return slices.Max(values)
-		case QueryFunctionMin:
-			return slices.Min(values)
-		case QueryFunctionP50:
-			return GetPercentile(values, 50)
-		case QueryFunctionP90:
-			return GetPercentile(values, 90)
-		case QueryFunctionP95:
-			return GetPercentile(values, 95)
-		case QueryFunctionP99:
-			return GetPercentile(values, 99)
-		default:
-			log.Fatalf("Unknown function: %v", a.Function)
-		}
+		fallthrough
 	case QueryValueTypeFloat64:
-		values := records.GetFloats(fromIndex)
-		values = a.Filter.ApplyFloat64(values)
+		values := GetLogRecordsNumbers[float64](records, fromIndex)
+		values = apply(a.Filter, values)
 
-		switch a.Function {
-		case QueryFunctionCount:
-			return len(values)
-		case QueryFunctionSum:
-			return GetSum(values)
-		case QueryFunctionAny:
-			return values[0]
-		case QueryFunctionMean:
-			return GetMean(values)
-		case QueryFunctionStddev:
-			return GetStddev(values)
-		case QueryFunctionMax:
-			return slices.Max(values)
-		case QueryFunctionMin:
-			return slices.Min(values)
-		case QueryFunctionP50:
-			return GetPercentile(values, 50)
-		case QueryFunctionP90:
-			return GetPercentile(values, 90)
-		case QueryFunctionP95:
-			return GetPercentile(values, 95)
-		case QueryFunctionP99:
-			return GetPercentile(values, 99)
-		default:
-			log.Fatalf("Unknown function: %v", a.Function)
-		}
+		return evaluate(a.Function, values)
 	case QueryValueTypeString:
 		values := records.GetStrings(fromIndex)
 
