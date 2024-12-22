@@ -138,3 +138,12 @@ func (c ConvertMysqlBulkClause) Convert(a any) any {
 
 	return query
 }
+
+type ConvertRegexpReplace struct {
+	RegExp   *regexp.Regexp
+	Replacer string
+}
+
+func (c ConvertRegexpReplace) Convert(a any) any {
+	return c.RegExp.ReplaceAllString(a.(string), c.Replacer)
+}

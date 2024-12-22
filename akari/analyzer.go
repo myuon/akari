@@ -40,6 +40,11 @@ func (c ParserColumnConverterConfig) Load() Converter {
 		return ConvertQueryParams{Tag: c.Options["tag"].(string)}
 	case "mysqlBulkClause":
 		return ConvertMysqlBulkClause{}
+	case "regexp":
+		return ConvertRegexpReplace{
+			RegExp:   regexp.MustCompile(c.Options["pattern"].(string)),
+			Replacer: c.Options["replacer"].(string),
+		}
 	default:
 		log.Fatalf("Unknown converter type: %v", c.Type)
 		return nil
