@@ -112,11 +112,19 @@ type QueryFormatConfig struct {
 }
 
 type QueryConfig struct {
-	Name         string
+	Name         *string
 	From         string
 	Function     QueryFunction
 	Filter       *QueryFilterConfig
 	FormatOption QueryFormatConfig
+}
+
+func (c QueryConfig) GetName() string {
+	if c.Name != nil {
+		return *c.Name
+	}
+
+	return c.From
 }
 
 type InsertColumnConfigType string
@@ -164,7 +172,7 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 		}
 
 		queryOptions = append(queryOptions, Query{
-			Name:     query.Name,
+			Name:     query.GetName(),
 			From:     query.From,
 			Function: function,
 			Filter:   filter,
@@ -175,7 +183,7 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 	}
 	for _, query := range c.Query {
 		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions, FormatColumnOptions{
-			Name:          query.Name,
+			Name:          query.GetName(),
 			Format:        query.FormatOption.Format,
 			Alignment:     query.FormatOption.Alignment,
 			HumanizeBytes: query.FormatOption.HumanizeBytes,

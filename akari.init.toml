@@ -3,6 +3,7 @@ name = "nginx"
 groupingKeys = ["Method", "Url", "Protocol"]
 sortKeys = ["Total"]
 limit = 100
+diffs = ["Count", "Total", "Mean"]
 
 [analyzers.parser]
 regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''
@@ -16,9 +17,11 @@ converters = []
 name = "Url"
 specifier.name = "Url"
 converters = [
-  { type = "ulid", options = { replacer = "(ulid)" } },
-  { type = "uuid", options = { replacer = "(uuid)" } },
   { type = "queryParams", options = { replacer = "*" } },
+  { type = "regexp", options = { replacer = "(ulid)", pattern = '''[0-9a-zA-Z]{26}''' } },
+  { type = "regexp", options = { replacer = "(uuid)", pattern = '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''' } },
+  { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
+  { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
 ]
 
 [[analyzers.parser.columns]]
@@ -50,165 +53,107 @@ converters = [{ type = "parseFloat64" }]
 [[analyzers.query]]
 name = "Count"
 from = "Url"
-valueType = "string"
 function = "count"
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "Total"
 from = "ResponseTime"
-valueType = "float64"
 function = "sum"
-formatOption = { alignment = "right", format = "%.3f" }
 
 [[analyzers.query]]
 name = "Mean"
 from = "ResponseTime"
-valueType = "float64"
 function = "mean"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Stddev"
 from = "ResponseTime"
-valueType = "float64"
 function = "stddev"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Min"
 from = "ResponseTime"
-valueType = "float64"
 function = "min"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P50"
 from = "ResponseTime"
-valueType = "float64"
 function = "p50"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P90"
 from = "ResponseTime"
-valueType = "float64"
 function = "p90"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P95"
 from = "ResponseTime"
-valueType = "float64"
 function = "p95"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P99"
 from = "ResponseTime"
-valueType = "float64"
 function = "p99"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Max"
 from = "ResponseTime"
-valueType = "float64"
 function = "max"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "2xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 200, end = 300 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "3xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 300, end = 400 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "4xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 400, end = 500 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "5xx"
 from = "Status"
-valueType = "int"
 function = "count"
 filter = { type = "between", options = { start = 500, end = 600 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "TotalBs"
 from = "Bytes"
-valueType = "int"
 function = "sum"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MinBs"
 from = "Bytes"
-valueType = "int"
 function = "min"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MeanBs"
 from = "Bytes"
-valueType = "int"
 function = "mean"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
 name = "MaxBs"
 from = "Bytes"
-valueType = "int"
 function = "max"
+formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
-name = "Protocol"
 from = "Protocol"
-valueType = "string"
-function = "any"
 
 [[analyzers.query]]
-name = "Method"
 from = "Method"
-valueType = "string"
-function = "any"
 formatOption = { alignment = "right" }
 
 [[analyzers.query]]
-name = "Url"
 from = "Url"
-valueType = "string"
-function = "any"
-
-[[analyzers.addColumn]]
-name = "(diff)"
-at = 1
-type = "diff"
-from = "Count"
-formatOption = { alignment = "left", format = "(%+d%%)" }
-
-[[analyzers.addColumn]]
-name = "(diff)"
-at = 3
-type = "diff"
-from = "Total"
-formatOption = { alignment = "left", format = "(%+d%%)" }
-
-[[analyzers.addColumn]]
-name = "(diff)"
-at = 3
-type = "diff"
-from = "Mean"
-formatOption = { alignment = "left", format = "(%+d%%)" }

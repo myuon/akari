@@ -242,12 +242,19 @@ func main() {
 	}
 
 	if initCommand.Happened() {
+		initFile, err := os.Open("akari.init.toml")
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		file, err := os.Create("akari.toml")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		toml.NewEncoder(file).Encode(akari.AkariConfig{})
+		if _, err := io.Copy(file, initFile); err != nil {
+			log.Fatal(err)
+		}
 	} else if serveCommand.Happened() {
 		rootDir = *logDir
 		configFilePath = *configFile

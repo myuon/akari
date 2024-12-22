@@ -149,18 +149,14 @@ function = "max"
 formatOption = { alignment = "right", humanizeBytes = true }
 
 [[analyzers.query]]
-name = "Protocol"
 from = "Protocol"
 
 [[analyzers.query]]
-name = "Method"
 from = "Method"
 formatOption = { alignment = "right" }
 
 [[analyzers.query]]
-name = "Url"
 from = "Url"
-function = "any"
 
 
 [[analyzers]]
@@ -197,20 +193,16 @@ converters = [
 name = "Count"
 from = "Elapsed"
 function = "count"
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "Total"
 from = "Elapsed"
 function = "sum"
-formatOption = { alignment = "right", format = "%.3f" }
 
 [[analyzers.query]]
 name = "Mean"
 from = "Elapsed"
 function = "mean"
-formatOption = { alignment = "right", format = "%.3f" }
 
 [[analyzers.query]]
-name = "Query"
 from = "Query"
