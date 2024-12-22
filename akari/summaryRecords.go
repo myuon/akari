@@ -1,5 +1,7 @@
 package akari
 
+import "slices"
+
 type SummaryRecordColumn struct {
 	Name string
 }
@@ -24,7 +26,7 @@ type SummaryRecordKeyPair struct {
 	Record []any
 }
 
-func (r SummaryRecords) GetKeyPairs() []SummaryRecordKeyPair {
+func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
 	summaryRecords := []SummaryRecordKeyPair{}
 	for key, record := range r.Rows {
 		summaryRecords = append(summaryRecords, SummaryRecordKeyPair{
@@ -34,4 +36,24 @@ func (r SummaryRecords) GetKeyPairs() []SummaryRecordKeyPair {
 	}
 
 	return summaryRecords
+}
+
+type SummaryRecordKeyPairs []SummaryRecordKeyPair
+
+func (r *SummaryRecordKeyPairs) SortBy(sortKeys []int) {
+	records := *r
+
+	slices.SortStableFunc([]SummaryRecordKeyPair(records), func(a, b SummaryRecordKeyPair) int {
+		for _, sortKey := range sortKeys {
+			if a.Record[sortKey].(float64) > b.Record[sortKey].(float64) {
+				return -1
+			} else if a.Record[sortKey].(float64) < b.Record[sortKey].(float64) {
+				return 1
+			}
+		}
+
+		return 0
+	})
+
+	*r = records
 }

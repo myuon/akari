@@ -249,22 +249,12 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 		prevSummary = sm
 	}
 
-	summaryRecords := summary.GetKeyPairs()
-
-	slices.SortStableFunc(summaryRecords, func(a, b akari.SummaryRecordKeyPair) int {
-		totalIndex := summary.GetIndex("Total")
-		if a.Record[totalIndex].(float64) > b.Record[totalIndex].(float64) {
-			return -1
-		} else if a.Record[totalIndex].(float64) < b.Record[totalIndex].(float64) {
-			return 1
-		} else {
-			return strings.Compare(a.Key, b.Key)
-		}
-	})
+	records := summary.GetKeyPairs()
+	records.SortBy([]int{summary.GetIndex("Total")})
 
 	rows := [][]string{}
 
-	for j, record := range summaryRecords {
+	for j, record := range records {
 		if j > 100 {
 			break
 		}
@@ -501,17 +491,7 @@ func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 	summary := analyzeDbSummary(parseDbLogRecords(r))
 
 	records := summary.GetKeyPairs()
-
-	slices.SortStableFunc(records, func(a, b akari.SummaryRecordKeyPair) int {
-		totalIndex := summary.GetIndex("Total")
-		if a.Record[totalIndex].(float64) > b.Record[totalIndex].(float64) {
-			return -1
-		} else if a.Record[totalIndex].(float64) < b.Record[totalIndex].(float64) {
-			return 1
-		} else {
-			return strings.Compare(a.Key, b.Key)
-		}
-	})
+	records.SortBy([]int{summary.GetIndex("Total")})
 
 	rows := [][]string{}
 	for j, record := range records {
