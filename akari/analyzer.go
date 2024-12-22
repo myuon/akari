@@ -120,6 +120,20 @@ type QueryConfig struct {
 	FormatOption QueryFormatConfig
 }
 
+type InsertColumnConfigType string
+
+const (
+	InsertColumnConfigTypeDiff InsertColumnConfigType = "diff"
+)
+
+type AddColumnConfig struct {
+	Name         string
+	At           int
+	Type         InsertColumnConfigType
+	From         string
+	FormatOption QueryFormatConfig
+}
+
 type AnalyzerConfig struct {
 	Name         string
 	Parser       ParserConfig
@@ -127,6 +141,7 @@ type AnalyzerConfig struct {
 	Query        []QueryConfig
 	SortKeys     []string
 	Limit        int
+	AddColumn    []AddColumnConfig
 }
 
 func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
@@ -162,7 +177,44 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 		})
 	}
 
+	// parse, summarize
 	summary := Parse(parseOptions, r).Summarize(queryOptions)
+
+	prevSummary := SummaryRecords{}
+	if prev != nil {
+		prevSummary = Parse(parseOptions, prev).Summarize(queryOptions)
+	}
+
+	// transform
+	for _, add := range c.AddColumn {
+		summary.Insert(add.At, SummaryRecordColumn{Name: add.Name}, func(key string, row []any) any {
+			prevRecord, ok := prevSummary.Rows[key]
+			if ok {
+				if current, ok := row[summary.GetIndex(add.From)].(int); ok {
+					if prev, ok := prevRecord[prevSummary.GetIndex(add.From)].(int); ok {
+						if current > 0 && prev > 0 {
+							return (current - prev) * 100 / prev
+						}
+					}
+				} else if current, ok := row[summary.GetIndex(add.From)].(float64); ok {
+					if prev, ok := prevRecord[prevSummary.GetIndex(add.From)].(float64); ok {
+						if current > 0 && prev > 0 {
+							return int((current - prev) * 100 / prev)
+						}
+					}
+				}
+			}
+
+			return 0
+		})
+
+		option := FormatColumnOptions{
+			Name:      add.Name,
+			Format:    add.FormatOption.Format,
+			Alignment: add.FormatOption.Alignment,
+		}
+		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions[:add.At], append([]FormatColumnOptions{option}, formatOptions.ColumnOptions[add.At:]...)...)
+	}
 
 	records := summary.GetKeyPairs()
 
@@ -170,9 +222,14 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 	for _, orderKey := range c.SortKeys {
 		orderKeyIndexes = append(orderKeyIndexes, summary.GetIndex(orderKey))
 	}
+
+	// sort
 	records.SortBy(orderKeyIndexes)
 
+	// format
 	data := records.Format(formatOptions)
+
+	// output
 	data.WriteInText(w)
 }
 

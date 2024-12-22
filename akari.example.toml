@@ -191,3 +191,24 @@ name = "Url"
 from = "Url"
 valueType = "string"
 function = "any"
+
+[[analyzers.addColumn]]
+name = "(diff)"
+at = 1
+type = "diff"
+from = "Count"
+formatOption = { alignment = "left", format = "(%+d%%)" }
+
+[[analyzers.addColumn]]
+name = "(diff)"
+at = 3
+type = "diff"
+from = "Total"
+formatOption = { alignment = "left", format = "(%+d%%)" }
+
+[[analyzers.addColumn]]
+name = "(diff)"
+at = 3
+type = "diff"
+from = "Mean"
+formatOption = { alignment = "left", format = "(%+d%%)" }
