@@ -12,6 +12,14 @@ const (
 	LogRecordTypeDateTime LogRecordType = "datetime"
 )
 
+func (t LogRecordType) IsFloat() bool {
+	return t == LogRecordTypeFloat64
+}
+
+func (t LogRecordType) IsNumeric() bool {
+	return t == LogRecordTypeInt || t == LogRecordTypeInt64 || t == LogRecordTypeFloat64
+}
+
 type LogRecordColumn struct {
 	Name string
 	Type LogRecordType
@@ -75,15 +83,17 @@ func (r LogRecordRows) GetStrings(index int) []string {
 
 func (r LogRecords) Summarize(queries []Query) (SummaryRecords, error) {
 	summary := map[string][]any{}
+	resultTypes := map[string]LogRecordType{}
 	for key, records := range r.Records {
 		row := []any{}
 		for _, query := range queries {
-			value, err := query.Apply(r.Columns, records)
+			value, resultType, err := query.Apply(r.Columns, records)
 			if err != nil {
 				return SummaryRecords{}, fmt.Errorf("Failed to apply query: %v (cause: %w)", query, err)
 			}
 
 			row = append(row, value)
+			resultTypes[query.Name] = resultType
 		}
 
 		summary[key] = row
@@ -91,7 +101,10 @@ func (r LogRecords) Summarize(queries []Query) (SummaryRecords, error) {
 
 	columns := []SummaryRecordColumn{}
 	for _, q := range queries {
-		columns = append(columns, SummaryRecordColumn{Name: q.Name})
+		columns = append(columns, SummaryRecordColumn{
+			Name: q.Name,
+			Type: resultTypes[q.Name],
+		})
 	}
 
 	return SummaryRecords{

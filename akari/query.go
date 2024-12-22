@@ -22,6 +22,37 @@ const (
 	QueryFunctionAny    QueryFunction = "any"
 )
 
+func (f QueryFunction) ResultType(originalType LogRecordType) LogRecordType {
+	switch f {
+	case QueryFunctionCount:
+		return LogRecordTypeInt
+	case QueryFunctionSum:
+		return originalType
+	case QueryFunctionMean:
+		return originalType
+	case QueryFunctionMax:
+		return originalType
+	case QueryFunctionMin:
+		return originalType
+	case QueryFunctionStddev:
+		return originalType
+	case QueryFunctionP50:
+		return originalType
+	case QueryFunctionP90:
+		return originalType
+	case QueryFunctionP95:
+		return originalType
+	case QueryFunctionP99:
+		return originalType
+	case QueryFunctionAny:
+		return originalType
+	default:
+		log.Fatalf("Unknown function: %v", f)
+	}
+
+	return LogRecordTypeString
+}
+
 func evaluate[T int | float64](f QueryFunction, values []T) any {
 	switch f {
 	case QueryFunctionCount:
@@ -100,7 +131,7 @@ type Query struct {
 	Filter   *QueryFilter
 }
 
-func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, error) {
+func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, LogRecordType, error) {
 	fromIndex := columns.GetIndex(a.From)
 	valueType := columns[columns.GetIndex(a.From)].Type
 
@@ -109,26 +140,26 @@ func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, erro
 		values := GetLogRecordsNumbers[int](records, fromIndex)
 		values = apply(a.Filter, values)
 
-		return evaluate(a.Function, values), nil
+		return evaluate(a.Function, values), a.Function.ResultType(valueType), nil
 	case LogRecordTypeInt64:
 		fallthrough
 	case LogRecordTypeFloat64:
 		values := GetLogRecordsNumbers[float64](records, fromIndex)
 		values = apply(a.Filter, values)
 
-		return evaluate(a.Function, values), nil
+		return evaluate(a.Function, values), a.Function.ResultType(valueType), nil
 	case LogRecordTypeString:
 		values := records.GetStrings(fromIndex)
 
 		switch a.Function {
 		case QueryFunctionCount:
-			return len(values), nil
+			return len(values), a.Function.ResultType(valueType), nil
 		case QueryFunctionAny:
-			return values[0], nil
+			return values[0], a.Function.ResultType(valueType), nil
 		default:
-			return nil, fmt.Errorf("Unknown function: %v", a.Function)
+			return nil, "", fmt.Errorf("Unknown function: %v", a.Function)
 		}
 	default:
-		return nil, fmt.Errorf("Unknown value type: %v", valueType)
+		return nil, "", fmt.Errorf("Unknown value type: %v", valueType)
 	}
 }

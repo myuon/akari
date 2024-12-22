@@ -54,89 +54,75 @@ converters = [{ type = "parseFloat64" }]
 name = "Count"
 from = "Url"
 function = "count"
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "Total"
 from = "ResponseTime"
 function = "sum"
-formatOption = { alignment = "right", format = "%.3f" }
 
 [[analyzers.query]]
 name = "Mean"
 from = "ResponseTime"
 function = "mean"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Stddev"
 from = "ResponseTime"
 function = "stddev"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Min"
 from = "ResponseTime"
 function = "min"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P50"
 from = "ResponseTime"
 function = "p50"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P90"
 from = "ResponseTime"
 function = "p90"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P95"
 from = "ResponseTime"
 function = "p95"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "P99"
 from = "ResponseTime"
 function = "p99"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "Max"
 from = "ResponseTime"
 function = "max"
-formatOption = { alignment = "right", format = "%.4f" }
 
 [[analyzers.query]]
 name = "2xx"
 from = "Status"
 function = "count"
 filter = { type = "between", options = { start = 200, end = 300 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "3xx"
 from = "Status"
 function = "count"
 filter = { type = "between", options = { start = 300, end = 400 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "4xx"
 from = "Status"
 function = "count"
 filter = { type = "between", options = { start = 400, end = 500 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "5xx"
 from = "Status"
 function = "count"
 filter = { type = "between", options = { start = 500, end = 600 } }
-formatOption = { alignment = "right" }
 
 [[analyzers.query]]
 name = "TotalBs"
@@ -165,12 +151,10 @@ formatOption = { alignment = "right", humanizeBytes = true }
 [[analyzers.query]]
 name = "Protocol"
 from = "Protocol"
-function = "any"
 
 [[analyzers.query]]
 name = "Method"
 from = "Method"
-function = "any"
 formatOption = { alignment = "right" }
 
 [[analyzers.query]]
@@ -230,4 +214,3 @@ formatOption = { alignment = "right", format = "%.3f" }
 [[analyzers.query]]
 name = "Query"
 from = "Query"
-function = "any"

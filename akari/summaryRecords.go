@@ -7,6 +7,7 @@ import (
 
 type SummaryRecordColumn struct {
 	Name string
+	Type LogRecordType
 }
 
 type SummaryRecords struct {
@@ -24,9 +25,22 @@ func (r SummaryRecords) GetIndex(key string) int {
 	return -1
 }
 
+func (r *SummaryRecords) Insert(at int, column SummaryRecordColumn, generator func(key string, row []any) any) {
+	r.Columns = InsertAt(r.Columns, at, column)
+
+	for key := range r.Rows {
+		r.Rows[key] = InsertAt(r.Rows[key], at, generator(key, r.Rows[key]))
+	}
+}
+
 type SummaryRecordKeyPair struct {
 	Key    string
 	Record []any
+}
+
+type SummaryRecordKeyPairs struct {
+	Columns []SummaryRecordColumn
+	Entries []SummaryRecordKeyPair
 }
 
 func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
@@ -38,23 +52,16 @@ func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
 		})
 	}
 
-	return summaryRecords
-}
-
-func (r *SummaryRecords) Insert(at int, column SummaryRecordColumn, generator func(key string, row []any) any) {
-	r.Columns = InsertAt(r.Columns, at, column)
-
-	for key := range r.Rows {
-		r.Rows[key] = InsertAt(r.Rows[key], at, generator(key, r.Rows[key]))
+	return SummaryRecordKeyPairs{
+		Columns: r.Columns,
+		Entries: summaryRecords,
 	}
 }
-
-type SummaryRecordKeyPairs []SummaryRecordKeyPair
 
 func (r *SummaryRecordKeyPairs) SortBy(sortKeys []int) {
 	records := *r
 
-	slices.SortStableFunc([]SummaryRecordKeyPair(records), func(a, b SummaryRecordKeyPair) int {
+	slices.SortStableFunc(records.Entries, func(a, b SummaryRecordKeyPair) int {
 		for _, sortKey := range sortKeys {
 			if a.Record[sortKey].(float64) > b.Record[sortKey].(float64) {
 				return -1
@@ -83,7 +90,7 @@ type FormatOptions struct {
 
 func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 	rows := [][]string{}
-	for j, record := range r {
+	for j, record := range r.Entries {
 		if options.Limit > 0 && j > options.Limit {
 			break
 		}
@@ -92,7 +99,11 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 		for i, value := range record.Record {
 			format := options.ColumnOptions[i].Format
 			if format == "" {
-				format = "%v"
+				if r.Columns[i].Type.IsFloat() {
+					format = "%.3f"
+				} else {
+					format = "%v"
+				}
 			}
 			if options.ColumnOptions[i].HumanizeBytes {
 				value = HumanizeBytes(value.(int))
@@ -105,10 +116,19 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 	}
 
 	columns := []TableColumn{}
-	for _, column := range options.ColumnOptions {
+	for k, column := range options.ColumnOptions {
+		alignment := column.Alignment
+		if alignment == "" {
+			if r.Columns[k].Type.IsNumeric() {
+				alignment = TableColumnAlignmentRight
+			} else {
+				alignment = TableColumnAlignmentLeft
+			}
+		}
+
 		columns = append(columns, TableColumn{
 			Name:      column.Name,
-			Alignment: column.Alignment,
+			Alignment: alignment,
 		})
 	}
 

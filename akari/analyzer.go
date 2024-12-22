@@ -158,10 +158,15 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 			filter = &f
 		}
 
+		function := query.Function
+		if function == "" {
+			function = QueryFunctionAny
+		}
+
 		queryOptions = append(queryOptions, Query{
 			Name:     query.Name,
 			From:     query.From,
-			Function: query.Function,
+			Function: function,
 			Filter:   filter,
 		})
 	}
