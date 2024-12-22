@@ -226,7 +226,9 @@ converters = [
 [[analyzers.parser.columns]]
 name = "Query"
 specifier.index = 3
-converters = [{ type = "mysqlBulkClause" }]
+converters = [
+  { type = "regexp", options = { replacer = "(?, ...)", pattern = '''(\(\?(, \?)+\))''' } },
+]
 
 [[analyzers.query]]
 name = "Count"

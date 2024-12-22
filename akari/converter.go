@@ -10,9 +10,8 @@ import (
 )
 
 var (
-	ulidLike        = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
-	uuidLike        = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-	mysqlBulkClause = regexp.MustCompile(`(\(\?(, \?)+\))`)
+	ulidLike = regexp.MustCompile(`[0-9a-zA-Z]{26}`)
+	uuidLike = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 )
 
 type Converter interface {
@@ -124,19 +123,6 @@ type ConvertDiv struct {
 
 func (c ConvertDiv) Convert(a any) any {
 	return float64(a.(int64)) / c.Divisor
-}
-
-type ConvertMysqlBulkClause struct{}
-
-func (c ConvertMysqlBulkClause) Convert(a any) any {
-	query := a.(string)
-
-	if mysqlBulkClause.Match([]byte(query)) {
-		whole := mysqlBulkClause.FindStringSubmatch(query)[0]
-		query = strings.ReplaceAll(query, whole, "(?, ...)")
-	}
-
-	return query
 }
 
 type ConvertRegexpReplace struct {

@@ -38,8 +38,6 @@ func (c ParserColumnConverterConfig) Load() Converter {
 		return ConvertDiv{Divisor: c.Options["divisor"].(float64)}
 	case "queryParams":
 		return ConvertQueryParams{Replacer: c.Options["replacer"].(string)}
-	case "mysqlBulkClause":
-		return ConvertMysqlBulkClause{}
 	case "regexp":
 		return ConvertRegexpReplace{
 			RegExp:   regexp.MustCompile(c.Options["pattern"].(string)),
