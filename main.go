@@ -16,7 +16,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/akamensky/argparse"
-	"github.com/dustin/go-humanize"
 	"github.com/myuon/akari/akari"
 )
 
@@ -39,7 +38,7 @@ type FileData struct {
 }
 
 func (d FileData) SizeHuman() string {
-	return humanize.Bytes(uint64(d.Size))
+	return akari.HumanizeBytes(int(d.Size))
 }
 
 func (d FileData) PeekString() string {

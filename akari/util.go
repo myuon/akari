@@ -40,13 +40,15 @@ func GetPercentile[T int | float64](values_ []T, percentile int) T {
 }
 
 func HumanizeBytes(bytes int) string {
-	if bytes > 1024*1024*1024 {
+	if bytes > 1024*1024*1024*1024 {
+		return fmt.Sprintf("%.1f TB", float64(bytes)/1024/1024/1024/1024)
+	} else if bytes > 1024*1024*1024 {
 		return fmt.Sprintf("%.1f GB", float64(bytes)/1024/1024/1024)
 	} else if bytes > 1024*1024 {
 		return fmt.Sprintf("%.1f MB", float64(bytes)/1024/1024)
 	} else if bytes > 1024 {
 		return fmt.Sprintf("%.1f KB", float64(bytes)/1024)
 	} else {
-		return fmt.Sprintf("%d  B", bytes)
+		return fmt.Sprintf("%.1f  B", float64(bytes))
 	}
 }
