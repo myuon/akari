@@ -402,28 +402,6 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 	data.WriteInText(w)
 }
 
-type ParserColumnRegExpSpecifier struct {
-	Name  string
-	Index int
-}
-
-type ParserColumnOption struct {
-	Name       string
-	Specifier  ParserColumnRegExpSpecifier
-	Converters []string
-}
-
-type ParserConfig struct {
-	RegExp  *regexp.Regexp
-	Columns []ParserColumnOption
-}
-
-type AnalyzerConfig struct {
-	Parser       ParserConfig
-	GroupingKeys []string
-	Query        []string
-}
-
 func analyzeDbQueryLog(r io.Reader, w io.Writer) {
 	parseOptions := akari.ParseOption{
 		RegExp: dbQueryLoggerRegexp,
