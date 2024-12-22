@@ -55,9 +55,14 @@ func (d FileData) ModifiedAtString() string {
 	return d.ModifiedAt.Format(time.DateTime)
 }
 
+type PageDataFile struct {
+	LogType string
+	Content []FileData
+}
+
 type PageData struct {
 	Title string
-	Files map[string][]FileData
+	Files []PageDataFile
 }
 
 func listFiles(root string) ([]FileData, error) {
@@ -156,9 +161,32 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	entries := []PageDataFile{}
+	for logType, files := range filesByType {
+		entries = append(entries, PageDataFile{
+			LogType: logType,
+			Content: files,
+		})
+	}
+
+	logTypes := config.Load().GetLogTypes()
+
+	slices.SortStableFunc(entries, func(a, b PageDataFile) int {
+		aIndex := slices.Index(logTypes, a.LogType)
+		bIndex := slices.Index(logTypes, b.LogType)
+
+		if aIndex == -1 {
+			return 1
+		} else if bIndex == -1 {
+			return -1
+		} else {
+			return aIndex - bIndex
+		}
+	})
+
 	pageData := PageData{
-		Title: "File List",
-		Files: filesByType,
+		Title: "Akari",
+		Files: entries,
 	}
 	err = templateFiles.ExecuteTemplate(w, "files.html", pageData)
 	if err != nil {

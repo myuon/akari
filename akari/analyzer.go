@@ -287,3 +287,12 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, w io.Writer) {
 type AkariConfig struct {
 	Analyzers []AnalyzerConfig
 }
+
+func (c AkariConfig) GetLogTypes() []string {
+	logTypes := []string{}
+	for _, analyzer := range c.Analyzers {
+		logTypes = append(logTypes, analyzer.Name)
+	}
+
+	return logTypes
+}

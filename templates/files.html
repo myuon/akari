@@ -8,8 +8,8 @@
 </head>
 <body>
 	<h1>{{ .Title }}</h1>
-	{{ range $key, $files := .Files }}
-	<h2>{{ $key }}</h2>
+	{{ range $key, $content := .Files }}
+	<h2>{{ $content.LogType }}</h2>
 	<table>
 		<thead>
 			<tr>
@@ -21,7 +21,7 @@
 			</tr>
 		</thead>
 		<tbody>
-			{{ range $files }}
+			{{ range $content.Content }}
 			<tr>
 				<td>{{ .ModifiedAtString }}</td>
 				<td>
