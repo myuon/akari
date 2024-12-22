@@ -71,7 +71,7 @@ func parseLogRecords(r io.Reader) akari.LogRecords {
 	scanner := bufio.NewScanner(r)
 
 	md5Hash := md5.New()
-	records := map[string][][]any{}
+	records := map[string]akari.LogRecordRows{}
 	for scanner.Scan() {
 		line := scanner.Text()
 
@@ -150,20 +150,21 @@ func parseLogRecords(r io.Reader) akari.LogRecords {
 func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 	summary := map[string][]any{}
 	for key, records := range logRecords.Records {
-		requestTimes := []float64{}
-		for _, record := range records {
-			responseTime := record[logRecords.GetIndex("ResponseTime")].(float64)
-			requestTimes = append(requestTimes, responseTime)
-		}
+		requestTimes := records.GetFloats(logRecords.GetIndex("ResponseTime"))
+		statuses := records.GetInts(logRecords.GetIndex("Status"))
+		bytesSlice := records.GetFloats(logRecords.GetIndex("Bytes"))
 
 		totalRequestTime := getSum(requestTimes)
+
+		if totalRequestTime < 0.001 {
+			continue
+		}
 
 		status2xx := 0
 		status3xx := 0
 		status4xx := 0
 		status5xx := 0
-		for _, record := range records {
-			status := record[logRecords.GetIndex("Status")].(int)
+		for _, status := range statuses {
 			switch {
 			case status >= 200 && status < 300:
 				status2xx++
@@ -174,16 +175,6 @@ func analyzeSummary(logRecords akari.LogRecords) akari.SummaryRecords {
 			case status >= 500 && status < 600:
 				status5xx++
 			}
-		}
-
-		bytesSlice := []int{}
-		for _, record := range records {
-			bytes := record[logRecords.GetIndex("Bytes")].(int)
-			bytesSlice = append(bytesSlice, bytes)
-		}
-
-		if totalRequestTime < 0.001 {
-			continue
 		}
 
 		summary[key] = []any{
@@ -414,7 +405,7 @@ func analyzeNginxLog(r io.Reader, prev io.Reader, w io.Writer) {
 func parseDbLogRecords(r io.Reader) akari.LogRecords {
 	scanner := bufio.NewScanner(r)
 
-	logRecords := map[string][][]any{}
+	logRecords := map[string]akari.LogRecordRows{}
 	md5Hash := md5.New()
 	for scanner.Scan() {
 		line := scanner.Text()
