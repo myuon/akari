@@ -263,6 +263,11 @@ func main() {
 	verbose := parser.Flag("v", "verbose", &argparse.Options{Help: "Verbose mode"})
 
 	initCommand := parser.NewCommand("init", "Generates a new akari configuration file")
+
+	runCommand := parser.NewCommand("run", "Run the log analyzer")
+	runConfigFile := runCommand.String("c", "akari.toml", &argparse.Options{Help: "Configuration file path"})
+	runLogFile := runCommand.StringPositional(nil)
+
 	serveCommand := parser.NewCommand("serve", "Starts a web server to serve the log analyzer")
 	configFile := serveCommand.String("c", "akari.toml", &argparse.Options{Help: "Configuration file path"})
 	logDir := serveCommand.StringPositional(nil)
@@ -289,6 +294,44 @@ func main() {
 		if _, err := io.Copy(file, initFile); err != nil {
 			log.Fatal(err)
 		}
+	} else if runCommand.Happened() {
+		configFilePath = *runConfigFile
+		logFilePath := *runLogFile
+
+		var c akari.AkariConfig
+		if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
+			log.Fatal(err)
+		}
+
+		config.Store(c)
+
+		logFile, err := os.Open(logFilePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		line := make([]byte, 512)
+		n, err := logFile.Read(line)
+		if err != nil && err != io.EOF {
+			log.Fatal(err)
+		}
+		line = line[:n]
+
+		if strings.Contains(string(line), "\n") {
+			line = []byte(strings.SplitN(string(line), "\n", 2)[0])
+		}
+
+		logFile.Seek(0, 0)
+
+		tableData := akari.TableData{}
+		for _, analyzer := range config.Load().Analyzers {
+			if analyzer.Parser.RegExp.Match(line) {
+				tableData = analyzer.Analyze(logFile, nil)
+				break
+			}
+		}
+
+		tableData.WriteInText(os.Stdout)
 	} else if serveCommand.Happened() {
 		rootDir = *logDir
 		configFilePath = *configFile
