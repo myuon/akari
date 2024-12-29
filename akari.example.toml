@@ -8,48 +8,33 @@ showRank = true
 
 [analyzers.parser]
 regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''
-
-[[analyzers.parser.columns]]
-name = "Method"
-
-[[analyzers.parser.columns]]
-name = "Url"
-specifier.name = "Url"
-converters = [
-  { type = "queryParams", options = { replacer = "*" } },
-  { type = "regexp", options = { replacer = "(ulid)", pattern = '''[0-9a-zA-Z]{26}''' } },
-  { type = "regexp", options = { replacer = "(uuid)", pattern = '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''' } },
-  { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
-  { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
+columns = [
+  { name = "Method" },
+  { name = "Url", converters = [
+    { type = "queryParams", options = { replacer = "*" } },
+    { type = "regexp", options = { replacer = "(ulid)", pattern = '''[0-9a-zA-Z]{26}''' } },
+    { type = "regexp", options = { replacer = "(uuid)", pattern = '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''' } },
+    { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
+    { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
+  ] },
+  { name = "Protocol" },
+  { name = "Status", converters = [
+    { type = "parseInt" },
+  ] },
+  { name = "Bytes", converters = [
+    { type = "parseInt" },
+  ] },
+  { name = "UserAgent" },
+  { name = "ResponseTime", converters = [
+    { type = "parseFloat64" },
+  ] },
 ]
 
-[[analyzers.parser.columns]]
-name = "Protocol"
-
-[[analyzers.parser.columns]]
-name = "Status"
-converters = [{ type = "parseInt" }]
-
-[[analyzers.parser.columns]]
-name = "Bytes"
-converters = [{ type = "parseInt" }]
-
-[[analyzers.parser.columns]]
-name = "UserAgent"
-
-[[analyzers.parser.columns]]
-name = "ResponseTime"
-converters = [{ type = "parseFloat64" }]
-
-
-[[analyzers.query]]
-name = "Count"
-from = "Url"
-function = "count"
 
 [[analyzers.query]]
 from = "ResponseTime"
 columns = [
+  { name = "Count", function = "count" },
   { name = "Total", function = "sum" },
   { name = "Mean", function = "mean" },
   { name = "Stddev", function = "stddev" },
