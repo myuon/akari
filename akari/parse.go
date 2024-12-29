@@ -2,8 +2,8 @@ package akari
 
 import (
 	"bufio"
-	"crypto/md5"
 	"fmt"
+	"hash/maphash"
 	"io"
 	"regexp"
 )
@@ -24,7 +24,7 @@ type ParseOption struct {
 func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 	scanner := bufio.NewScanner(r)
 
-	md5Hash := md5.New()
+	hash := maphash.Hash{}
 	records := map[string]LogRecordRows{}
 
 	logger.Debug("Start scanning")
@@ -82,7 +82,9 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 			row = append(row, valueAny)
 		}
 
-		hashKey := md5Hash.Sum([]byte(fmt.Sprintf("%v", key)))
+		hash.Reset()
+		hash.WriteString(fmt.Sprintf("%v", key))
+		hashKey := hash.Sum(nil)
 		records[string(hashKey)] = append(records[string(hashKey)], row)
 	}
 
