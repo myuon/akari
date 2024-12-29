@@ -10,8 +10,6 @@ regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protoc
 
 [[analyzers.parser.columns]]
 name = "Method"
-specifier.name = "Method"
-converters = []
 
 [[analyzers.parser.columns]]
 name = "Url"
@@ -25,21 +23,21 @@ converters = [
 ]
 
 [[analyzers.parser.columns]]
-specifier.name = "Protocol"
+name = "Protocol"
 
 [[analyzers.parser.columns]]
-specifier.name = "Status"
+name = "Status"
 converters = [{ type = "parseInt" }]
 
 [[analyzers.parser.columns]]
-specifier.name = "Bytes"
+name = "Bytes"
 converters = [{ type = "parseInt" }]
 
 [[analyzers.parser.columns]]
-specifier.name = "UserAgent"
+name = "UserAgent"
 
 [[analyzers.parser.columns]]
-specifier.name = "ResponseTime"
+name = "ResponseTime"
 converters = [{ type = "parseFloat64" }]
 
 

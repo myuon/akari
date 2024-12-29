@@ -52,9 +52,9 @@ type ParserColumnConfig struct {
 }
 
 func (c ParserColumnConfig) Load() ParseColumnOption {
-	name := c.Name
-	if name == "" {
-		name = c.Specifier.Name
+	spName := c.Specifier.Name
+	if spName == "" && c.Specifier.Index == 0 {
+		spName = c.Name
 	}
 
 	cs := []Converter{}
@@ -63,8 +63,8 @@ func (c ParserColumnConfig) Load() ParseColumnOption {
 	}
 
 	return ParseColumnOption{
-		Name:        name,
-		SubexpName:  c.Specifier.Name,
+		Name:        c.Name,
+		SubexpName:  spName,
 		SubexpIndex: c.Specifier.Index,
 		Converters:  cs,
 	}
