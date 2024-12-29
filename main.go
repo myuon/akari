@@ -298,6 +298,9 @@ func main() {
 		configFilePath = *runConfigFile
 		logFilePath := *runLogFile
 
+		slog.Debug("Loading config", "path", configFilePath)
+		now := time.Now()
+
 		var c akari.AkariConfig
 		if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
 			log.Fatal(err)
@@ -309,6 +312,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		slog.Debug("Loaded config", "config", config, "duration(ms)", time.Since(now).Milliseconds())
+		now = time.Now()
 
 		line := make([]byte, 512)
 		n, err := logFile.Read(line)
@@ -323,15 +329,29 @@ func main() {
 
 		logFile.Seek(0, 0)
 
+		slog.Debug("Read first line", "line", string(line), "duration(ms)", time.Since(now).Milliseconds())
+		now = time.Now()
+
 		tableData := akari.TableData{}
 		for _, analyzer := range config.Load().Analyzers {
 			if analyzer.Parser.RegExp.Match(line) {
+				slog.Debug("Matched analyzer", "analyzer", analyzer.Name, "duration(ms)", time.Since(now).Milliseconds())
+				now = time.Now()
+
 				tableData = analyzer.Analyze(logFile, nil)
 				break
 			}
+
+			slog.Debug("Skipped analyzer", "analyzer", analyzer.Name, "duration(ms)", time.Since(now).Milliseconds())
+			now = time.Now()
 		}
 
+		slog.Debug("Analyzed log", "duration(ms)", time.Since(now).Milliseconds())
+		now = time.Now()
+
 		tableData.WriteInText(os.Stdout)
+
+		slog.Debug("Printed table", "duration(ms)", time.Since(now).Milliseconds())
 	} else if serveCommand.Happened() {
 		rootDir = *logDir
 		configFilePath = *configFile
