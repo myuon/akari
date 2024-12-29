@@ -4,14 +4,13 @@ groupingKeys = ["Method", "Url", "Protocol"]
 sortKeys = ["Total"]
 limit = 100
 diffs = ["Count", "Total", "Mean"]
+showRank = true
 
 [analyzers.parser]
 regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''
 
 [[analyzers.parser.columns]]
 name = "Method"
-specifier.name = "Method"
-converters = []
 
 [[analyzers.parser.columns]]
 name = "Url"
@@ -26,27 +25,20 @@ converters = [
 
 [[analyzers.parser.columns]]
 name = "Protocol"
-specifier.name = "Protocol"
-converters = []
 
 [[analyzers.parser.columns]]
 name = "Status"
-specifier.name = "Status"
 converters = [{ type = "parseInt" }]
 
 [[analyzers.parser.columns]]
 name = "Bytes"
-specifier.name = "Bytes"
 converters = [{ type = "parseInt" }]
 
 [[analyzers.parser.columns]]
 name = "UserAgent"
-specifier.name = "UserAgent"
-converters = []
 
 [[analyzers.parser.columns]]
 name = "ResponseTime"
-specifier.name = "ResponseTime"
 converters = [{ type = "parseFloat64" }]
 
 
@@ -56,97 +48,38 @@ from = "Url"
 function = "count"
 
 [[analyzers.query]]
-name = "Total"
 from = "ResponseTime"
-function = "sum"
+columns = [
+  { name = "Total", function = "sum" },
+  { name = "Mean", function = "mean" },
+  { name = "Stddev", function = "stddev" },
+  { name = "Min", function = "min" },
+  { name = "P50", function = "p50" },
+  { name = "P90", function = "p90" },
+  { name = "P95", function = "p95" },
+  { name = "P99", function = "p99" },
+  { name = "Max", function = "max" },
+]
 
 [[analyzers.query]]
-name = "Mean"
-from = "ResponseTime"
-function = "mean"
-
-[[analyzers.query]]
-name = "Stddev"
-from = "ResponseTime"
-function = "stddev"
-
-[[analyzers.query]]
-name = "Min"
-from = "ResponseTime"
-function = "min"
-
-[[analyzers.query]]
-name = "P50"
-from = "ResponseTime"
-function = "p50"
-
-[[analyzers.query]]
-name = "P90"
-from = "ResponseTime"
-function = "p90"
-
-[[analyzers.query]]
-name = "P95"
-from = "ResponseTime"
-function = "p95"
-
-[[analyzers.query]]
-name = "P99"
-from = "ResponseTime"
-function = "p99"
-
-[[analyzers.query]]
-name = "Max"
-from = "ResponseTime"
-function = "max"
-
-[[analyzers.query]]
-name = "2xx"
 from = "Status"
 function = "count"
-filter = { type = "between", options = { start = 200, end = 300 } }
+columns = [
+  { name = "2xx", filter = { type = "between", options = { start = 200, end = 300 } } },
+  { name = "3xx", filter = { type = "between", options = { start = 300, end = 400 } } },
+  { name = "4xx", filter = { type = "between", options = { start = 400, end = 500 } } },
+  { name = "5xx", filter = { type = "between", options = { start = 500, end = 600 } } },
+]
 
 [[analyzers.query]]
-name = "3xx"
-from = "Status"
-function = "count"
-filter = { type = "between", options = { start = 300, end = 400 } }
-
-[[analyzers.query]]
-name = "4xx"
-from = "Status"
-function = "count"
-filter = { type = "between", options = { start = 400, end = 500 } }
-
-[[analyzers.query]]
-name = "5xx"
-from = "Status"
-function = "count"
-filter = { type = "between", options = { start = 500, end = 600 } }
-
-[[analyzers.query]]
-name = "TotalBs"
 from = "Bytes"
-function = "sum"
 formatOption = { alignment = "right", humanizeBytes = true }
-
-[[analyzers.query]]
-name = "MinBs"
-from = "Bytes"
-function = "min"
-formatOption = { alignment = "right", humanizeBytes = true }
-
-[[analyzers.query]]
-name = "MeanBs"
-from = "Bytes"
-function = "mean"
-formatOption = { alignment = "right", humanizeBytes = true }
-
-[[analyzers.query]]
-name = "MaxBs"
-from = "Bytes"
-function = "max"
-formatOption = { alignment = "right", humanizeBytes = true }
+columns = [
+  { name = "TotalBs", function = "sum" },
+  { name = "MeanBs", function = "mean" },
+  { name = "MinBs", function = "min" },
+  { name = "MaxBs", function = "max" },
+]
 
 [[analyzers.query]]
 from = "Protocol"
