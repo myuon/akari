@@ -25,27 +25,20 @@ converters = [
 ]
 
 [[analyzers.parser.columns]]
-name = "Protocol"
 specifier.name = "Protocol"
-converters = []
 
 [[analyzers.parser.columns]]
-name = "Status"
 specifier.name = "Status"
 converters = [{ type = "parseInt" }]
 
 [[analyzers.parser.columns]]
-name = "Bytes"
 specifier.name = "Bytes"
 converters = [{ type = "parseInt" }]
 
 [[analyzers.parser.columns]]
-name = "UserAgent"
 specifier.name = "UserAgent"
-converters = []
 
 [[analyzers.parser.columns]]
-name = "ResponseTime"
 specifier.name = "ResponseTime"
 converters = [{ type = "parseFloat64" }]
 

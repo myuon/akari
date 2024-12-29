@@ -52,13 +52,18 @@ type ParserColumnConfig struct {
 }
 
 func (c ParserColumnConfig) Load() ParseColumnOption {
+	name := c.Name
+	if name == "" {
+		name = c.Specifier.Name
+	}
+
 	cs := []Converter{}
 	for _, converter := range c.Converters {
 		cs = append(cs, converter.Load())
 	}
 
 	return ParseColumnOption{
-		Name:        c.Name,
+		Name:        name,
 		SubexpName:  c.Specifier.Name,
 		SubexpIndex: c.Specifier.Index,
 		Converters:  cs,
