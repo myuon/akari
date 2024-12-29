@@ -19,8 +19,8 @@ converters = [
   { type = "queryParams", options = { replacer = "*" } },
   { type = "regexp", options = { replacer = "(ulid)", pattern = '''[0-9a-zA-Z]{26}''' } },
   { type = "regexp", options = { replacer = "(uuid)", pattern = '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''' } },
-  { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
-  { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
+  # { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
+  # { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
 ]
 
 [[analyzers.parser.columns]]
