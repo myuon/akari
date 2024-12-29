@@ -4,6 +4,7 @@ groupingKeys = ["Method", "Url", "Protocol"]
 sortKeys = ["Total"]
 limit = 100
 diffs = ["Count", "Total", "Mean"]
+showRank = true
 
 [analyzers.parser]
 regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''

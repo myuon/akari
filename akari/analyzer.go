@@ -156,6 +156,7 @@ type AnalyzerConfig struct {
 	Limit        int
 	AddColumn    []AddColumnConfig
 	Diffs        []string // shorthand for AddColumn
+	ShowRank     bool
 }
 
 func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
@@ -307,6 +308,17 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 		}
 		formatOptions.ColumnOptions = InsertAt(formatOptions.ColumnOptions, at, option)
 	}
+	if c.ShowRank {
+		summary.Insert(0, SummaryRecordColumn{Name: "Rank"}, func(key string, row []any) any {
+			// NOTE: rankはsortした後にしか確定しないので、ここでは一旦何も返さない。あとで再計算したものを設定するようにする
+			return 0
+		})
+		formatOptions.ColumnOptions = InsertAt(formatOptions.ColumnOptions, 0, FormatColumnOptions{
+			Name:      "#",
+			Format:    "%d",
+			Alignment: TableColumnAlignmentRight,
+		})
+	}
 
 	records := summary.GetKeyPairs()
 
@@ -317,6 +329,13 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 
 	// sort
 	records.SortBy(orderKeyIndexes)
+
+	if c.ShowRank {
+		for i, pair := range records.Entries {
+			// Rankは0列目
+			pair.Record[0] = i + 1
+		}
+	}
 
 	// format
 	return records.Format(formatOptions)
