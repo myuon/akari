@@ -1,15 +1,17 @@
 package akari
 
 import (
+	"hash/maphash"
 	"io"
 	"log"
 )
 
 func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) TableData {
 	parseOptions := ParseOption{
-		RegExp:  c.Parser.RegExp,
-		Columns: c.Parser.Columns.Load(),
-		Keys:    c.GroupingKeys,
+		RegExp:   c.Parser.RegExp,
+		Columns:  c.Parser.Columns.Load(),
+		Keys:     c.GroupingKeys,
+		HashSeed: maphash.MakeSeed(),
 	}
 	queryOptions := []Query{}
 	formatOptions := FormatOptions{

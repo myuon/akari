@@ -16,15 +16,17 @@ type ParseColumnOption struct {
 }
 
 type ParseOption struct {
-	RegExp  *regexp.Regexp
-	Columns []ParseColumnOption
-	Keys    []string
+	RegExp   *regexp.Regexp
+	Columns  []ParseColumnOption
+	Keys     []string
+	HashSeed maphash.Seed
 }
 
 func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 	scanner := bufio.NewScanner(r)
 
 	hash := maphash.Hash{}
+	hash.SetSeed(options.HashSeed)
 	records := map[string]LogRecordRows{}
 
 	logger.Debug("Start scanning")
