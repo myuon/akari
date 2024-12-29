@@ -22,3 +22,10 @@ func (l *DurationLogger) Debug(message string, args ...any) {
 	l.Logger.Debug(message, newArgs...)
 	l.PrevTime = time.Now()
 }
+
+type DebugLogger interface {
+	Debug(message string, args ...any)
+}
+
+var _ DebugLogger = &DurationLogger{}
+var _ DebugLogger = &slog.Logger{}

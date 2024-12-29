@@ -159,7 +159,7 @@ type AnalyzerConfig struct {
 	ShowRank     bool
 }
 
-func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
+func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, logger DebugLogger) TableData {
 	parseOptions := ParseOption{
 		RegExp:  c.Parser.RegExp,
 		Columns: c.Parser.Columns.Load(),
@@ -232,11 +232,15 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 		}
 	}
 
+	logger.Debug("Loaded options", "parseOptions", parseOptions, "queryOptions", queryOptions, "formatOptions", formatOptions)
+
 	// parse, summarize
 	summary, err := Parse(parseOptions, r).Summarize(queryOptions)
 	if err != nil {
 		log.Fatalf("Failed to summarize: %v", err)
 	}
+
+	logger.Debug("Summarized")
 
 	prevSummary := SummaryRecords{}
 	if prev != nil {
@@ -245,6 +249,8 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 			log.Fatalf("Failed to summarize: %v", err)
 		}
 	}
+
+	logger.Debug("Summarized (prev)")
 
 	// transform
 	for _, add := range c.AddColumn {
@@ -320,6 +326,8 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 		})
 	}
 
+	logger.Debug("Transformed")
+
 	records := summary.GetKeyPairs()
 
 	orderKeyIndexes := []int{}
@@ -330,6 +338,8 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 	// sort
 	records.SortBy(orderKeyIndexes)
 
+	logger.Debug("Sorted")
+
 	if c.ShowRank {
 		for i, pair := range records.Entries {
 			// Rankは0列目
@@ -337,8 +347,14 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 		}
 	}
 
+	logger.Debug("Add rank")
+
 	// format
-	return records.Format(formatOptions)
+	result := records.Format(formatOptions)
+
+	logger.Debug("Formatted")
+
+	return result
 }
 
 type AkariConfig struct {
