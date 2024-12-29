@@ -40,11 +40,20 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 	logger.Debug("Subexp names", "names", subexpNames)
 
 	resultTypes := map[string]LogRecordType{}
+
+	tokensLines := [][]string{}
 	for scanner.Scan() {
 		line := scanner.Text()
+		if len(line) == 0 {
+			continue
+		}
 
-		tokens := options.RegExp.FindStringSubmatch(line)
+		tokensLines = append(tokensLines, options.RegExp.FindStringSubmatch(line))
+	}
 
+	logger.Debug("Tokenss", "lines", len(tokensLines))
+
+	for _, tokens := range tokensLines {
 		row := []any{}
 		key := []any{}
 
