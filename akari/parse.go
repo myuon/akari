@@ -21,11 +21,13 @@ type ParseOption struct {
 	Keys    []string
 }
 
-func Parse(options ParseOption, r io.Reader) LogRecords {
+func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 	scanner := bufio.NewScanner(r)
 
 	md5Hash := md5.New()
 	records := map[string]LogRecordRows{}
+
+	logger.Debug("Start scanning")
 
 	subexpNames := options.RegExp.SubexpNames()
 	subexpIndexByName := map[string]int{}
@@ -34,6 +36,8 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 			subexpIndexByName[name] = i
 		}
 	}
+
+	logger.Debug("Subexp names", "names", subexpNames)
 
 	resultTypes := map[string]LogRecordType{}
 	for scanner.Scan() {
@@ -72,6 +76,8 @@ func Parse(options ParseOption, r io.Reader) LogRecords {
 		hashKey := md5Hash.Sum([]byte(fmt.Sprintf("%v", key)))
 		records[string(hashKey)] = append(records[string(hashKey)], row)
 	}
+
+	logger.Debug("Scan finished")
 
 	columns := []LogRecordColumn{}
 	for _, column := range options.Columns {

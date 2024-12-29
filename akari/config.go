@@ -234,7 +234,7 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, logger DebugLogger)
 
 	logger.Debug("Loaded options")
 
-	parsed := Parse(parseOptions, r)
+	parsed := Parse(parseOptions, r, logger)
 
 	logger.Debug("Parsed")
 
@@ -248,7 +248,7 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader, logger DebugLogger)
 
 	prevSummary := SummaryRecords{}
 	if prev != nil {
-		prevSummary, err = Parse(parseOptions, prev).Summarize(queryOptions)
+		prevSummary, err = Parse(parseOptions, prev, logger).Summarize(queryOptions)
 		if err != nil {
 			log.Fatalf("Failed to summarize: %v", err)
 		}
