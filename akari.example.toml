@@ -122,19 +122,12 @@ converters = [
 ]
 
 [[analyzers.query]]
-name = "Count"
 from = "Elapsed"
-function = "count"
-
-[[analyzers.query]]
-name = "Total"
-from = "Elapsed"
-function = "sum"
-
-[[analyzers.query]]
-name = "Mean"
-from = "Elapsed"
-function = "mean"
+columns = [
+  { name = "Count", function = "count" },
+  { name = "Total", function = "sum" },
+  { name = "Mean", function = "mean" },
+]
 
 [[analyzers.query]]
 from = "Query"
