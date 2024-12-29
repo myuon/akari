@@ -69,8 +69,7 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 			// Default type is string
 			resultTypes[column.Name] = LogRecordTypeString
 			for _, converter := range column.Converters {
-				valueAny = converter.Convert(valueAny)
-				resultTypes[column.Name] = converter.ResultType()
+				valueAny, resultTypes[column.Name] = converter.Convert(valueAny)
 			}
 
 			for _, columnKey := range options.Keys {
