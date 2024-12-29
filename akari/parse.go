@@ -51,7 +51,7 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 		tokensLines = append(tokensLines, options.RegExp.FindStringSubmatch(line))
 	}
 
-	logger.Debug("Tokenss", "lines", len(tokensLines))
+	logger.Debug("Scan finished", "lines", len(tokensLines))
 
 	for _, tokens := range tokensLines {
 		row := []any{}
@@ -86,7 +86,7 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 		records[string(hashKey)] = append(records[string(hashKey)], row)
 	}
 
-	logger.Debug("Scan finished")
+	logger.Debug("Processing tokens finished")
 
 	columns := []LogRecordColumn{}
 	for _, column := range options.Columns {
