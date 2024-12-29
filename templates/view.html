@@ -28,9 +28,9 @@
         <tr>
           {{ range . }}
           {{ if eq .Alignment "left" }}
-          <td style="text-align: left;">{{ .Value }}</td>
+          <td style="text-align: left;" data-value="{{ .RawValue }}">{{ .Value }}</td>
           {{ else if eq .Alignment "right" }}
-          <td style="text-align: right;">{{ .Value }}</td>
+          <td style="text-align: right;" data-value="{{ .RawValue }}">{{ .Value }}</td>
           {{ else }}
           <td>{{ .Value }}</td>
           {{ end }}

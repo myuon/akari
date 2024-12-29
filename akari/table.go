@@ -17,6 +17,7 @@ type TableColumn struct {
 
 type TableCell struct {
 	Value     string
+	RawValue  any
 	Alignment string
 }
 
@@ -25,7 +26,7 @@ type TableData struct {
 	Rows    [][]TableCell
 }
 
-func (d TableData) WriteInText(w io.Writer) {
+func (d TableData) Write(w io.Writer) {
 	table := [][]string{}
 
 	headers := []string{}

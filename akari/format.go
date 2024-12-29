@@ -120,6 +120,7 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 
 			row = append(row, TableCell{
 				Value:     fmt.Sprintf(format, value),
+				RawValue:  value,
 				Alignment: alignment,
 			})
 		}

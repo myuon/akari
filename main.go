@@ -240,8 +240,10 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tableData := akari.TableData{}
+	usedAnalyzer := akari.AnalyzerConfig{}
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
+			usedAnalyzer = analyzer
 			tableData = analyzer.Analyze(logFile, prevLogFile, slog.Default())
 			break
 		}
@@ -250,6 +252,7 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err = templateFiles.ExecuteTemplate(w, "view.html", map[string]any{
 		"Title":     filePath,
+		"Analyzer":  usedAnalyzer,
 		"TableData": tableData,
 	}); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
@@ -345,7 +348,7 @@ func main() {
 
 		logger.Debug("Analyzed log")
 
-		tableData.WriteInText(os.Stdout)
+		tableData.Write(os.Stdout)
 
 		logger.Debug("Printed table")
 	} else if serveCommand.Happened() {
