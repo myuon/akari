@@ -122,6 +122,7 @@ type QueryConfig struct {
 	Function     QueryFunction
 	Filter       *QueryFilterConfig
 	FormatOption QueryFormatConfig
+	Columns      []QueryConfig
 }
 
 func (c QueryConfig) GetName() string {
@@ -164,6 +165,9 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 		Keys:    c.GroupingKeys,
 	}
 	queryOptions := []Query{}
+	formatOptions := FormatOptions{
+		Limit: c.Limit,
+	}
 	for _, query := range c.Query {
 		var filter *QueryFilter
 		if query.Filter != nil {
@@ -176,23 +180,55 @@ func (c AnalyzerConfig) Analyze(r io.Reader, prev io.Reader) TableData {
 			function = QueryFunctionAny
 		}
 
-		queryOptions = append(queryOptions, Query{
+		queryOption := Query{
 			Name:     query.GetName(),
 			From:     query.From,
 			Function: function,
 			Filter:   filter,
-		})
-	}
-	formatOptions := FormatOptions{
-		Limit: c.Limit,
-	}
-	for _, query := range c.Query {
-		formatOptions.ColumnOptions = append(formatOptions.ColumnOptions, FormatColumnOptions{
-			Name:          query.GetName(),
-			Format:        query.FormatOption.Format,
-			Alignment:     query.FormatOption.Alignment,
-			HumanizeBytes: query.FormatOption.HumanizeBytes,
-		})
+		}
+
+		if len(query.Columns) > 0 {
+			for _, column := range query.Columns {
+				name := queryOption.Name
+				if column.Name != nil {
+					name = *column.Name
+				}
+				from := queryOption.From
+				if column.From != "" {
+					from = column.From
+				}
+				function := queryOption.Function
+				if column.Function != "" {
+					function = column.Function
+				}
+				filter := queryOption.Filter
+				if column.Filter != nil {
+					f := column.Filter.Load()
+					filter = &f
+				}
+
+				queryOptions = append(queryOptions, Query{
+					Name:     name,
+					From:     from,
+					Function: function,
+					Filter:   filter,
+				})
+				formatOptions.ColumnOptions = append(formatOptions.ColumnOptions, FormatColumnOptions{
+					Name:          name,
+					Format:        query.FormatOption.Format,
+					Alignment:     query.FormatOption.Alignment,
+					HumanizeBytes: query.FormatOption.HumanizeBytes,
+				})
+			}
+		} else {
+			queryOptions = append(queryOptions, queryOption)
+			formatOptions.ColumnOptions = append(formatOptions.ColumnOptions, FormatColumnOptions{
+				Name:          queryOption.Name,
+				Format:        query.FormatOption.Format,
+				Alignment:     query.FormatOption.Alignment,
+				HumanizeBytes: query.FormatOption.HumanizeBytes,
+			})
+		}
 	}
 
 	// parse, summarize
