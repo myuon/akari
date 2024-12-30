@@ -244,6 +244,7 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err = templateFiles.ExecuteTemplate(w, "view.html", map[string]any{
 		"Title":     filePath,
+		"PrevPath":  prevFilePath,
 		"LogType":   logType,
 		"Config":    usedAnalyzer,
 		"TableData": tableData,

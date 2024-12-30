@@ -10,8 +10,9 @@
 <body>
 	<h2>{{ .Title }}</h2>
   <div class="view-file">
-    <div>
+    <div class="menu">
       <a href="/raw?type={{ .LogType }}&file={{ .Title }}">Raw</a>
+      <a href="/view?type={{ .LogType }}&file={{ .PrevPath }}">Prev</a>
     </div>
 
     <table>

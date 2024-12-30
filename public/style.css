@@ -111,4 +111,9 @@ table {
       position: sticky;
     }
   }
+
+  .menu {
+    display: flex;
+    gap: 12px;
+  }
 }
