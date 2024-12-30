@@ -24,6 +24,33 @@ type TableCell struct {
 	Alignment    string
 }
 
+func (c TableCell) Diff() float64 {
+	if c.PrevRawValue == nil {
+		return 0
+	}
+
+	switch c.RawValue.(type) {
+	case int:
+		v := c.RawValue.(int)
+		p := c.PrevRawValue.(int)
+		if p == 0 {
+			return 0
+		}
+
+		return float64(v-p) / float64(p)
+	case float64:
+		v := c.RawValue.(float64)
+		p := c.PrevRawValue.(float64)
+		if p < 0.1 {
+			return 0
+		}
+
+		return (v - p) / p
+	default:
+		return 0
+	}
+}
+
 type TableData struct {
 	Columns []TableColumn
 	Rows    [][]TableCell
@@ -73,7 +100,20 @@ func (d TableData) Write(w io.Writer) {
 	}
 }
 
-func (d TableData) Html() HtmlTableData {
+type HtmlOptions struct {
+	DiffHeaders []string
+}
+
+func (o HtmlOptions) IsDiffHeader(header string) bool {
+	for _, h := range o.DiffHeaders {
+		if h == header {
+			return true
+		}
+	}
+	return false
+}
+
+func (d TableData) Html(options HtmlOptions) HtmlTableData {
 	headers := []HtmlTableHeader{}
 	for _, column := range d.Columns {
 		style := map[string]string{}
@@ -85,6 +125,13 @@ func (d TableData) Html() HtmlTableData {
 			Text:  column.Name,
 			Style: style,
 		})
+
+		if options.IsDiffHeader(column.Name) {
+			headers = append(headers, HtmlTableHeader{
+				Text:  "(diff)",
+				Style: style,
+			})
+		}
 	}
 
 	rows := [][]HtmlTableCell{}
@@ -109,6 +156,18 @@ func (d TableData) Html() HtmlTableData {
 				Attributes: attrs,
 				Style:      style,
 			})
+
+			if options.IsDiffHeader(d.Columns[i].Name) {
+				value := cell.Diff()
+
+				attrs := map[string]string{}
+				attrs["data-value"] = fmt.Sprintf("%v", value)
+
+				htmlRow = append(htmlRow, HtmlTableCell{
+					Text:       template.HTML(fmt.Sprintf("(%+d%%)", int(value*100))),
+					Attributes: attrs,
+				})
+			}
 		}
 		rows = append(rows, htmlRow)
 	}

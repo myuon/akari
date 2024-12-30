@@ -234,7 +234,9 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
 			usedAnalyzer = analyzer
-			tableData = akari.Analyze(analyzer, logFile, prevLogFile, slog.Default()).Html()
+			tableData = akari.Analyze(analyzer, logFile, prevLogFile, slog.Default()).Html(akari.HtmlOptions{
+				DiffHeaders: analyzer.Diffs,
+			})
 			break
 		}
 	}

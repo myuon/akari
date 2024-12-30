@@ -191,12 +191,12 @@ func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) 
 
 	logger.Debug("Sorted")
 
-	if c.ShowRank {
-		for i, pair := range records.Entries {
-			// Rankは0列目
-			pair.Record[0].Value = i + 1
-		}
-	}
+	// if c.ShowRank {
+	// 	for i, pair := range records.Entries {
+	// 		// Rankは0列目
+	// 		pair.Record[0].Value = i + 1
+	// 	}
+	// }
 
 	logger.Debug("Add rank")
 
