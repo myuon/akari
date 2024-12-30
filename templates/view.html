@@ -18,13 +18,7 @@
       <thead>
         <tr>
           {{ range .TableData.Columns }}
-          {{ if eq .Alignment "left" }}
-          <th style="text-align: left;">{{ .Name }}</th>
-          {{ else if eq .Alignment "right" }}
-          <th style="text-align: right;">{{ .Name }}</th>
-          {{ else }}
-          <th>{{ .Name }}</th>
-          {{ end }}
+          <th style="{{ if ne .Alignment "" }}text-align: {{ .Alignment }};{{ end }}">{{ .Name }}</th>
           {{ end }}
         </tr>
       </thead>
@@ -32,13 +26,7 @@
         {{ range .TableData.Rows }}
         <tr>
           {{ range . }}
-          {{ if eq .Alignment "left" }}
-          <td style="text-align: left;" data-value="{{ .RawValue }}" data-prev-value="{{ .PrevRawValue }}">{{ .Value }}</td>
-          {{ else if eq .Alignment "right" }}
-          <td style="text-align: right;" data-value="{{ .RawValue }}" data-prev-value="{{ .PrevRawValue }}">{{ .Value }}</td>
-          {{ else }}
-          <td>{{ .Value }}</td>
-          {{ end }}
+          <td style="{{ if ne .Alignment "" }}text-align: {{ .Alignment }};{{ end }}" data-value="{{ .RawValue }}" data-prev-value="{{ .PrevRawValue }}">{{ .Value }}</td>
           {{ end }}
         </tr>
         {{ end }}
