@@ -81,22 +81,37 @@ func (r LogRecordRows) GetStrings(index int) []string {
 	return strings
 }
 
-func (r LogRecords) Summarize(queries []Query) (SummaryRecords, error) {
-	summary := map[string][]any{}
+func (r LogRecords) Summarize(queries []Query, prevRows map[string]LogRecordRows) (SummaryRecords, error) {
+	summary := map[string][]SummaryRowCell{}
 	resultTypes := map[string]LogRecordType{}
 	for key, records := range r.Records {
-		row := []any{}
+		row := []SummaryRowCell{}
 		for _, query := range queries {
 			value, resultType, err := query.Apply(r.Columns, records)
 			if err != nil {
 				return SummaryRecords{}, fmt.Errorf("Failed to apply query: %v (cause: %w)", query, err)
 			}
 
-			row = append(row, value)
+			row = append(row, SummaryRowCell{
+				Value: value,
+			})
 			resultTypes[query.Name] = resultType
 		}
 
 		summary[key] = row
+	}
+
+	for prevKey, prevRow := range prevRows {
+		for k, query := range queries {
+			value, _, err := query.Apply(r.Columns, prevRow)
+			if err != nil {
+				return SummaryRecords{}, fmt.Errorf("Failed to apply query: %v (cause: %w)", query, err)
+			}
+
+			if row, ok := summary[prevKey]; ok {
+				row[k].PrevValue = value
+			}
+		}
 	}
 
 	columns := []SummaryRecordColumn{}

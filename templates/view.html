@@ -10,7 +10,9 @@
 <body>
 	<h2>{{ .Title }}</h2>
   <div class="view-file">
-    <a href="/raw?type={{ .LogType }}&file={{ .Title }}">Raw</a>
+    <div>
+      <a href="/raw?type={{ .LogType }}&file={{ .Title }}">Raw</a>
+    </div>
 
     <table>
       <thead>
@@ -31,9 +33,9 @@
         <tr>
           {{ range . }}
           {{ if eq .Alignment "left" }}
-          <td style="text-align: left;" data-value="{{ .RawValue }}">{{ .Value }}</td>
+          <td style="text-align: left;" data-value="{{ .RawValue }}" data-prev-value="{{ .PrevRawValue }}">{{ .Value }}</td>
           {{ else if eq .Alignment "right" }}
-          <td style="text-align: right;" data-value="{{ .RawValue }}">{{ .Value }}</td>
+          <td style="text-align: right;" data-value="{{ .RawValue }}" data-prev-value="{{ .PrevRawValue }}">{{ .Value }}</td>
           {{ else }}
           <td>{{ .Value }}</td>
           {{ end }}

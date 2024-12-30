@@ -16,9 +16,10 @@ type TableColumn struct {
 }
 
 type TableCell struct {
-	Value     string
-	RawValue  any
-	Alignment string
+	Value        string
+	RawValue     any
+	PrevRawValue any
+	Alignment    string
 }
 
 type TableData struct {

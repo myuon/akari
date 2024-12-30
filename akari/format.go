@@ -10,9 +10,14 @@ type SummaryRecordColumn struct {
 	Type LogRecordType
 }
 
+type SummaryRowCell struct {
+	Value     any
+	PrevValue any
+}
+
 type SummaryRecords struct {
 	Columns []SummaryRecordColumn
-	Rows    map[string][]any
+	Rows    map[string][]SummaryRowCell
 }
 
 func (r SummaryRecords) GetIndex(key string) int {
@@ -25,28 +30,29 @@ func (r SummaryRecords) GetIndex(key string) int {
 	return -1
 }
 
-func (r *SummaryRecords) Insert(at int, column SummaryRecordColumn, generator func(key string, row []any) any) {
-	r.Columns = InsertAt(r.Columns, at, column)
+// func (r *SummaryRecords) Insert(at int, column SummaryRecordColumn, generator func(key string, row []any) any) {
+// 	r.Columns = InsertAt(r.Columns, at, column)
 
-	for key := range r.Rows {
-		r.Rows[key] = InsertAt(r.Rows[key], at, generator(key, r.Rows[key]))
-	}
-}
+// 	for key := range r.Rows {
+// 		r.Rows[key] = InsertAt(r.Rows[key], at, generator(key, r.Rows[key]))
+// 	}
+// }
 
 type SummaryRecordKeyPair struct {
 	Key    string
-	Record []any
+	Record []SummaryRowCell
 }
 
 type SummaryRecordKeyPairs struct {
-	Columns []SummaryRecordColumn
-	Entries []SummaryRecordKeyPair
+	Columns     []SummaryRecordColumn
+	Entries     []SummaryRecordKeyPair
+	PrevEntries []SummaryRecordKeyPair
 }
 
 func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
-	summaryRecords := []SummaryRecordKeyPair{}
+	entries := []SummaryRecordKeyPair{}
 	for key, record := range r.Rows {
-		summaryRecords = append(summaryRecords, SummaryRecordKeyPair{
+		entries = append(entries, SummaryRecordKeyPair{
 			Key:    key,
 			Record: record,
 		})
@@ -54,7 +60,7 @@ func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
 
 	return SummaryRecordKeyPairs{
 		Columns: r.Columns,
-		Entries: summaryRecords,
+		Entries: entries,
 	}
 }
 
@@ -63,9 +69,9 @@ func (r *SummaryRecordKeyPairs) SortBy(sortKeys []int) {
 
 	slices.SortStableFunc(records.Entries, func(a, b SummaryRecordKeyPair) int {
 		for _, sortKey := range sortKeys {
-			if a.Record[sortKey].(float64) > b.Record[sortKey].(float64) {
+			if a.Record[sortKey].Value.(float64) > b.Record[sortKey].Value.(float64) {
 				return -1
-			} else if a.Record[sortKey].(float64) < b.Record[sortKey].(float64) {
+			} else if a.Record[sortKey].Value.(float64) < b.Record[sortKey].Value.(float64) {
 				return 1
 			}
 		}
@@ -96,7 +102,7 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 		}
 
 		row := []TableCell{}
-		for i, value := range record.Record {
+		for i, cell := range record.Record {
 			format := options.ColumnOptions[i].Format
 			if format == "" {
 				if r.Columns[i].Type.IsFloat() {
@@ -106,7 +112,7 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 				}
 			}
 			if options.ColumnOptions[i].HumanizeBytes {
-				value = HumanizeBytes(value.(int))
+				cell.Value = HumanizeBytes(cell.Value.(int))
 			}
 
 			alignment := options.ColumnOptions[i].Alignment
@@ -119,9 +125,10 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 			}
 
 			row = append(row, TableCell{
-				Value:     fmt.Sprintf(format, value),
-				RawValue:  value,
-				Alignment: alignment,
+				Value:        fmt.Sprintf(format, cell.Value),
+				RawValue:     cell.Value,
+				PrevRawValue: cell.PrevValue,
+				Alignment:    alignment,
 			})
 		}
 
