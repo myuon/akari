@@ -121,8 +121,6 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 		}
 	}
 
-	log.Printf("Sorted by %v", len(prevRanks))
-
 	records.SortBy(SortByOptions{
 		SortKeyIndexes: orderKeyIndexes,
 	})

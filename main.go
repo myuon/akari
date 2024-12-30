@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
 	"io"
@@ -20,8 +21,17 @@ import (
 	"github.com/myuon/akari/akari"
 )
 
+//go:embed templates/*
+var templateFS embed.FS
+
+//go:embed akari.init.toml
+var akariInitFS embed.FS
+
+//go:embed public/*
+var publicFS embed.FS
+
 var (
-	templateFiles  = template.Must(template.ParseGlob("templates/*.html"))
+	templateFiles  = template.Must(template.ParseFS(templateFS, "templates/*.html"))
 	rootDir        = "."
 	configFilePath = "akari.toml"
 	config         = akari.NewGlobalVar(akari.AkariConfig{})
@@ -299,7 +309,7 @@ func main() {
 	}
 
 	if initCommand.Happened() {
-		initFile, err := os.Open("akari.init.toml")
+		initFile, err := akariInitFS.Open("akari.init.toml")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -411,7 +421,7 @@ func main() {
 
 		slog.Debug("Loaded config", "path", configFile, "config", config)
 
-		http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
+		http.Handle("/public/", http.FileServer(http.FS(publicFS)))
 		http.HandleFunc("/", logGroupHandler)
 		http.HandleFunc("/raw", rawFileHandler)
 		http.HandleFunc("/view", viewFileHandler)
