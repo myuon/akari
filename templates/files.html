@@ -12,29 +12,31 @@
 		{{ range .Files }}
 		<details>
 			<summary>{{ .DirPath }}</summary>
-			<table>
-				<thead>
-					<tr>
-						<th>DateTime</th>
-						<th>LogType</th>
-						<th>Name</th>
-						<th>Size</th>
-						<th>Peek</th>
-					</tr>
-				</thead>
-				<tbody>
-					{{ range .Content }}
-					<tr>
-						<td>{{ .ModifiedAtString }}</td>
-						<td>{{ .LogType }}</td>
-						<td>
-							<a href="/view?type={{ .LogType }}&file={{ .Path }}&prev={{ .PrevPath }}">{{ .Path }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
-						</td>
-						<td>{{ .SizeHuman }}</td>
-						<td><code>{{ .PeekString }}</code></td>
-					</tr>
-					{{ end }}
-			</table>
+			<div class="content">
+				<table>
+					<thead>
+						<tr>
+							<th>DateTime</th>
+							<th>LogType</th>
+							<th>Name</th>
+							<th>Size</th>
+							<th>Peek</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{ range .Content }}
+						<tr>
+							<td>{{ .ModifiedAtString }}</td>
+							<td>{{ .LogType }}</td>
+							<td>
+								<a href="/view?type={{ .LogType }}&file={{ .Path }}&prev={{ .PrevPath }}">{{ .Path }}</a> (<a href="/raw?file={{ .Path }}">Raw</a>)
+							</td>
+							<td>{{ .SizeHuman }}</td>
+							<td><code>{{ .PeekString }}</code></td>
+						</tr>
+						{{ end }}
+				</table>
+			</div>
 		</details>
 		{{ end }}
 	</div>

@@ -54,10 +54,20 @@ table {
 
 .log-groups {
   display: grid;
+  gap: 8px;
+
+  details {
+    display: grid;
+
+    .content {
+      margin: 8px;
+    }
+  }
 
   summary {
     cursor: pointer;
-    margin: 8px;
+    padding: 8px;
+    background-color: var(--gray-100);
   }
 }
 
