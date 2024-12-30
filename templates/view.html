@@ -17,8 +17,8 @@
     <table>
       <thead>
         <tr>
-          {{ range .TableData.Columns }}
-          <th style="{{ if ne .Alignment "" }}text-align: {{ .Alignment }};{{ end }}">{{ .Name }}</th>
+          {{ range .TableData.Headers }}
+          <th style="{{ call $.toStyle .Style }}">{{ .Text }}</th>
           {{ end }}
         </tr>
       </thead>
@@ -26,7 +26,7 @@
         {{ range .TableData.Rows }}
         <tr>
           {{ range . }}
-          <td style="{{ if ne .Alignment "" }}text-align: {{ .Alignment }};{{ end }}" data-value="{{ .RawValue }}" data-prev-value="{{ .PrevRawValue }}">{{ .Value }}</td>
+          <td style="{{ call $.toStyle .Style }}" {{ call $.toAttrs .Attributes }}>{{ .Text }}</td>
           {{ end }}
         </tr>
         {{ end }}

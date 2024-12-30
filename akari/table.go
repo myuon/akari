@@ -2,7 +2,9 @@ package akari
 
 import (
 	"fmt"
+	"html/template"
 	"io"
+	"strings"
 )
 
 const (
@@ -68,5 +70,51 @@ func (d TableData) Write(w io.Writer) {
 			}
 		}
 		fmt.Fprintln(w)
+	}
+}
+
+func (d TableData) Html() HtmlTableData {
+	headers := []HtmlTableHeader{}
+	for _, column := range d.Columns {
+		style := map[string]string{}
+		if column.Alignment != "" {
+			style["text-align"] = column.Alignment
+		}
+
+		headers = append(headers, HtmlTableHeader{
+			Text:  column.Name,
+			Style: style,
+		})
+	}
+
+	rows := [][]HtmlTableCell{}
+	for _, row := range d.Rows {
+		htmlRow := []HtmlTableCell{}
+		for i := range d.Columns {
+			cell := row[i]
+
+			style := map[string]string{}
+			if cell.Alignment != "" {
+				style["text-align"] = cell.Alignment
+			}
+
+			attrs := map[string]string{}
+			attrs["data-value"] = fmt.Sprintf("%v", cell.RawValue)
+			if cell.PrevRawValue != nil {
+				attrs["data-prev-value"] = fmt.Sprintf("%v", cell.PrevRawValue)
+			}
+
+			htmlRow = append(htmlRow, HtmlTableCell{
+				Text:       template.HTML(strings.ReplaceAll(cell.Value, " ", "&nbsp;")),
+				Attributes: attrs,
+				Style:      style,
+			})
+		}
+		rows = append(rows, htmlRow)
+	}
+
+	return HtmlTableData{
+		Headers: headers,
+		Rows:    rows,
 	}
 }

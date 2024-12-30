@@ -229,12 +229,12 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		prevLogFile = nil
 	}
 
-	tableData := akari.TableData{}
+	tableData := akari.HtmlTableData{}
 	usedAnalyzer := akari.AnalyzerConfig{}
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
 			usedAnalyzer = analyzer
-			tableData = akari.Analyze(analyzer, logFile, prevLogFile, slog.Default())
+			tableData = akari.Analyze(analyzer, logFile, prevLogFile, slog.Default()).Html()
 			break
 		}
 	}
@@ -245,6 +245,22 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		"LogType":   logType,
 		"Config":    usedAnalyzer,
 		"TableData": tableData,
+		"toStyle": func(style map[string]string) string {
+			result := []string{}
+			for key, value := range style {
+				result = append(result, fmt.Sprintf("%v:%v", key, value))
+			}
+
+			return strings.Join(result, ";")
+		},
+		"toAttrs": func(attrs map[string]string) template.HTMLAttr {
+			result := []string{}
+			for key, value := range attrs {
+				result = append(result, fmt.Sprintf(`%v="%v"`, key, value))
+			}
+
+			return template.HTMLAttr(strings.Join(result, " "))
+		},
 	}); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		log.Println("Template execution error:", err)
