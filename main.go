@@ -30,6 +30,7 @@ var (
 type FileData struct {
 	Name       string
 	Path       string
+	DirPath    string
 	IsDir      bool
 	ModifiedAt time.Time
 	Size       int64
@@ -56,7 +57,7 @@ func (d FileData) ModifiedAtString() string {
 }
 
 type PageDataFile struct {
-	LogType string
+	DirPath string
 	Content []FileData
 }
 
@@ -113,6 +114,7 @@ func listFiles(root string) ([]FileData, error) {
 			ModifiedAt: modifiedAt,
 			Peek:       line,
 			LogType:    logType,
+			DirPath:    filepath.Dir(path),
 		})
 
 		return nil
@@ -136,52 +138,40 @@ func logGroupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filesByType := map[string][]FileData{}
-	for _, file := range files {
-		filesByType[file.LogType] = append(filesByType[file.LogType], file)
-	}
-
-	for _, files := range filesByType {
-		slices.SortFunc(files, func(a, b FileData) int {
-			if !a.ModifiedAt.Equal(b.ModifiedAt) {
-				return b.ModifiedAt.Compare(a.ModifiedAt)
-			} else {
-				return strings.Compare(b.Name, a.Name)
-			}
-		})
-	}
-
-	for _, files := range filesByType {
-		for i := range files {
-			if i == len(files)-1 {
-				continue
-			}
-
-			files[i].PrevPath = files[i+1].Path
+	slices.SortFunc(files, func(a, b FileData) int {
+		if a.LogType != b.LogType {
+			return strings.Compare(a.LogType, b.LogType)
+		} else if a.DirPath != b.DirPath {
+			return strings.Compare(a.DirPath, b.DirPath)
+		} else if !a.ModifiedAt.Equal(b.ModifiedAt) {
+			return b.ModifiedAt.Compare(a.ModifiedAt)
+		} else {
+			return strings.Compare(b.Name, a.Name)
 		}
+	})
+	for i, file := range files {
+		for j := i + 1; j < len(files); j++ {
+			if files[j].LogType == file.LogType {
+				files[j].PrevPath = file.Path
+				break
+			}
+		}
+	}
+
+	filesByDirPath := map[string][]FileData{}
+	for _, file := range files {
+		filesByDirPath[file.DirPath] = append(filesByDirPath[file.DirPath], file)
 	}
 
 	entries := []PageDataFile{}
-	for logType, files := range filesByType {
+	for dirPath, files := range filesByDirPath {
 		entries = append(entries, PageDataFile{
-			LogType: logType,
+			DirPath: dirPath,
 			Content: files,
 		})
 	}
-
-	logTypes := config.Load().GetLogTypes()
-
 	slices.SortStableFunc(entries, func(a, b PageDataFile) int {
-		aIndex := slices.Index(logTypes, a.LogType)
-		bIndex := slices.Index(logTypes, b.LogType)
-
-		if aIndex == -1 {
-			return 1
-		} else if bIndex == -1 {
-			return -1
-		} else {
-			return aIndex - bIndex
-		}
+		return strings.Compare(b.DirPath, a.DirPath)
 	})
 
 	pageData := PageData{

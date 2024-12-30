@@ -52,6 +52,15 @@ table {
   }
 }
 
+.log-groups {
+  display: grid;
+
+  summary {
+    cursor: pointer;
+    margin: 8px;
+  }
+}
+
 .view-file {
   display: grid;
   gap: 16px;
