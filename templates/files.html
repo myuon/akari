@@ -11,7 +11,14 @@
 	<div class="log-groups">
 		{{ range .Files }}
 		<details>
-			<summary>{{ .DirPath }}</summary>
+			<summary>
+				<span>{{ .DirPath }}</span>
+				{{ range .Content }}
+				{{ if ne .LogType "unknown" }}
+				<a href="/view?type={{ .LogType }}&file={{ .Path }}&prev={{ .PrevPath }}">{{ .LogType }}</a>
+				{{ end }}
+				{{ end }}
+			</summary>
 			<div class="content">
 				<table>
 					<thead>

@@ -68,6 +68,28 @@ table {
     cursor: pointer;
     padding: 8px;
     background-color: var(--gray-100);
+
+    display: flex;
+    gap: 12px;
+
+    span {
+      font-family: 'Fira Code', monospace;
+      font-size: 14px;
+    }
+
+    span::before {
+      content: '▶';
+      font-size: 12px;
+      margin: 0 8px;
+      display: inline-block;
+      width: 12px;
+    }
+  }
+
+  details[open] {
+    span::before {
+      content: '▼';
+    }
   }
 }
 
