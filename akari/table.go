@@ -127,9 +127,13 @@ func (d TableData) Html(options HtmlOptions) HtmlTableData {
 		})
 
 		if options.IsDiffHeader(column.Name) {
+			attrs := map[string]string{}
+			attrs["data-diff"] = "true"
+
 			headers = append(headers, HtmlTableHeader{
-				Text:  "(diff)",
-				Style: style,
+				Text:       "(diff)",
+				Attributes: attrs,
+				Style:      style,
 			})
 		}
 	}

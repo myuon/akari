@@ -18,7 +18,7 @@
       <thead>
         <tr>
           {{ range .TableData.Headers }}
-          <th style="{{ call $.toStyle .Style }}">{{ .Text }}</th>
+          <th style="{{ call $.toStyle .Style }}" {{ call $.toAttrs .Attributes }}>{{ .Text }}</th>
           {{ end }}
         </tr>
       </thead>

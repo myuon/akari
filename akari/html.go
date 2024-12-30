@@ -3,8 +3,9 @@ package akari
 import "html/template"
 
 type HtmlTableHeader struct {
-	Text  string
-	Style map[string]string
+	Text       string
+	Attributes map[string]string
+	Style      map[string]string
 }
 
 type HtmlTableCell struct {

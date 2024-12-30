@@ -7,17 +7,31 @@ const getHeatmapColor = (value) => {
 };
 
 window.addEventListener("load", () => {
-  const rows = document.querySelector("tbody").children;
-  Array.from(rows).forEach((tr) => {
-    const cells = tr.children;
-    const cell = Array.from(cells)[3];
-    if (cell instanceof HTMLTableCellElement) {
-      const value = cell.dataset.value;
-
-      if (value !== undefined) {
-        cell.style.backgroundColor = getHeatmapColor(value);
-        Array.from(cells)[2].style.backgroundColor = getHeatmapColor(value);
+  const diffIndexes = [];
+  const headers = document.querySelectorAll("thead th");
+  Array.from(headers).forEach((th, i) => {
+    if (th instanceof HTMLElement) {
+      if (th.dataset.diff) {
+        diffIndexes.push(i);
       }
     }
+  });
+
+  const rows = document.querySelector("tbody").children;
+  Array.from(rows).forEach((tr) => {
+    diffIndexes.forEach((index) => {
+      const cells = tr.children;
+      const cell = Array.from(cells)[index];
+      if (cell instanceof HTMLTableCellElement) {
+        const value = cell.dataset.value;
+
+        if (value !== undefined) {
+          cell.style.backgroundColor = getHeatmapColor(value);
+          // diffのカラムの一つ前のカラムも色をつける
+          Array.from(cells)[index - 1].style.backgroundColor =
+            getHeatmapColor(value);
+        }
+      }
+    });
   });
 });
