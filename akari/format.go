@@ -30,14 +30,6 @@ func (r SummaryRecords) GetIndex(key string) int {
 	return -1
 }
 
-// func (r *SummaryRecords) Insert(at int, column SummaryRecordColumn, generator func(key string, row []any) any) {
-// 	r.Columns = InsertAt(r.Columns, at, column)
-
-// 	for key := range r.Rows {
-// 		r.Rows[key] = InsertAt(r.Rows[key], at, generator(key, r.Rows[key]))
-// 	}
-// }
-
 type SummaryRecordKeyPair struct {
 	Key    string
 	Record []SummaryRowCell
@@ -64,14 +56,29 @@ func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
 	}
 }
 
-func (r *SummaryRecordKeyPairs) SortBy(sortKeys []int) {
+type SortByOptions struct {
+	SortKeyIndexes []int
+	UsePrev        bool
+}
+
+func (r *SummaryRecordKeyPairs) SortBy(options SortByOptions) {
 	records := *r
 
 	slices.SortStableFunc(records.Entries, func(a, b SummaryRecordKeyPair) int {
-		for _, sortKey := range sortKeys {
-			if a.Record[sortKey].Value.(float64) > b.Record[sortKey].Value.(float64) {
+		for _, sortKey := range options.SortKeyIndexes {
+			valueA := a.Record[sortKey].Value.(float64)
+			if options.UsePrev {
+				valueA = a.Record[sortKey].PrevValue.(float64)
+			}
+
+			valueB := b.Record[sortKey].Value.(float64)
+			if options.UsePrev {
+				valueB = b.Record[sortKey].PrevValue.(float64)
+			}
+
+			if valueA > valueB {
 				return -1
-			} else if a.Record[sortKey].Value.(float64) < b.Record[sortKey].Value.(float64) {
+			} else if valueA < valueB {
 				return 1
 			}
 		}
@@ -92,6 +99,8 @@ type FormatColumnOptions struct {
 type FormatOptions struct {
 	ColumnOptions []FormatColumnOptions
 	Limit         int
+	AddRank       bool
+	PrevRanks     map[string]int
 }
 
 func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
@@ -102,6 +111,14 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 		}
 
 		row := []TableCell{}
+		if options.AddRank {
+			row = append(row, TableCell{
+				Value:        fmt.Sprintf("%d", j+1),
+				RawValue:     j + 1,
+				PrevRawValue: options.PrevRanks[record.Key] + 1,
+				Alignment:    TableColumnAlignmentRight,
+			})
+		}
 		for i, cell := range record.Record {
 			format := options.ColumnOptions[i].Format
 			if format == "" {
@@ -136,6 +153,12 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 	}
 
 	columns := []TableColumn{}
+	if options.AddRank {
+		columns = append(columns, TableColumn{
+			Name:      "#",
+			Alignment: TableColumnAlignmentRight,
+		})
+	}
 	for k, column := range options.ColumnOptions {
 		alignment := column.Alignment
 		if alignment == "" {

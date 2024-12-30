@@ -101,84 +101,6 @@ func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) 
 
 	logger.Debug("Summarized")
 
-	// transform
-	/*
-		for _, add := range c.AddColumn {
-			summary.Insert(add.At, SummaryRecordColumn{Name: add.Name}, func(key string, row []any) any {
-				prevRecord, ok := prevSummary.Rows[key]
-				if ok {
-					if current, ok := row[summary.GetIndex(add.From)].(int); ok {
-						if prev, ok := prevRecord[prevSummary.GetIndex(add.From)].(int); ok {
-							if current > 0 && prev > 0 {
-								return (current - prev) * 100 / prev
-							}
-						}
-					} else if current, ok := row[summary.GetIndex(add.From)].(float64); ok {
-						if prev, ok := prevRecord[prevSummary.GetIndex(add.From)].(float64); ok {
-							if current > 0 && prev > 0 {
-								return int((current - prev) * 100 / prev)
-							}
-						}
-					}
-				}
-
-				return 0
-			})
-
-			option := FormatColumnOptions{
-				Name:          add.Name,
-				Format:        add.FormatOption.Format,
-				Alignment:     add.FormatOption.Alignment,
-				HumanizeBytes: add.FormatOption.HumanizeBytes,
-			}
-			formatOptions.ColumnOptions = InsertAt(formatOptions.ColumnOptions, add.At, option)
-		}
-		for _, from := range c.Diffs {
-			at := summary.GetIndex(from) + 1
-			summary.Insert(at, SummaryRecordColumn{Name: "(diff)"}, func(key string, row []any) any {
-				prevRecord, ok := prevSummary.Rows[key]
-				if ok {
-					if current, ok := row[summary.GetIndex(from)].(int); ok {
-						if prev, ok := prevRecord[prevSummary.GetIndex(from)].(int); ok {
-							if current > 0 && prev > 0 {
-								return (current - prev) * 100 / prev
-							}
-						}
-					} else if current, ok := row[summary.GetIndex(from)].(float64); ok {
-						if prev, ok := prevRecord[prevSummary.GetIndex(from)].(float64); ok {
-							if current > 0 && prev > 0 {
-								return int((current - prev) * 100 / prev)
-							}
-						}
-					}
-				}
-
-				return 0
-			})
-
-			option := FormatColumnOptions{
-				Name:          "(diff)",
-				Format:        "(%+d%%)",
-				Alignment:     TableColumnAlignmentLeft,
-				HumanizeBytes: false,
-			}
-			formatOptions.ColumnOptions = InsertAt(formatOptions.ColumnOptions, at, option)
-		}
-		if c.ShowRank {
-			summary.Insert(0, SummaryRecordColumn{Name: "Rank"}, func(key string, row []any) any {
-				// NOTE: rankはsortした後にしか確定しないので、ここでは一旦何も返さない。あとで再計算したものを設定するようにする
-				return 0
-			})
-			formatOptions.ColumnOptions = InsertAt(formatOptions.ColumnOptions, 0, FormatColumnOptions{
-				Name:      "#",
-				Format:    "%d",
-				Alignment: TableColumnAlignmentRight,
-			})
-		}
-	*/
-
-	logger.Debug("Transformed")
-
 	records := summary.GetKeyPairs()
 
 	orderKeyIndexes := []int{}
@@ -187,20 +109,27 @@ func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) 
 	}
 
 	// sort
-	records.SortBy(orderKeyIndexes)
+	prevRanks := map[string]int{}
+	if c.ShowRank {
+		records.SortBy(SortByOptions{
+			SortKeyIndexes: orderKeyIndexes,
+			UsePrev:        true,
+		})
+
+		for i, record := range records.Entries {
+			prevRanks[record.Key] = i
+		}
+	}
+
+	records.SortBy(SortByOptions{
+		SortKeyIndexes: orderKeyIndexes,
+	})
 
 	logger.Debug("Sorted")
 
-	// if c.ShowRank {
-	// 	for i, pair := range records.Entries {
-	// 		// Rankは0列目
-	// 		pair.Record[0].Value = i + 1
-	// 	}
-	// }
-
-	logger.Debug("Add rank")
-
 	// format
+	formatOptions.AddRank = c.ShowRank
+	formatOptions.PrevRanks = prevRanks
 	result := records.Format(formatOptions)
 
 	logger.Debug("Formatted")

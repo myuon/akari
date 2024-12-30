@@ -153,8 +153,7 @@ type AnalyzerConfig struct {
 	Query        []QueryConfig
 	SortKeys     []string
 	Limit        int
-	AddColumn    []AddColumnConfig
-	Diffs        []string // shorthand for AddColumn
+	Diffs        []string
 	ShowRank     bool
 }
 
