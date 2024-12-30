@@ -36,9 +36,8 @@ type SummaryRecordKeyPair struct {
 }
 
 type SummaryRecordKeyPairs struct {
-	Columns     []SummaryRecordColumn
-	Entries     []SummaryRecordKeyPair
-	PrevEntries []SummaryRecordKeyPair
+	Columns []SummaryRecordColumn
+	Entries []SummaryRecordKeyPair
 }
 
 func (r SummaryRecords) GetKeyPairs() SummaryRecordKeyPairs {
