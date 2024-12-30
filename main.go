@@ -123,7 +123,7 @@ func listFiles(root string) ([]FileData, error) {
 	return files, nil
 }
 
-func fileHandler(w http.ResponseWriter, r *http.Request) {
+func logGroupHandler(w http.ResponseWriter, r *http.Request) {
 	dir := r.URL.Query().Get("dir")
 	if dir == "" {
 		dir = rootDir
@@ -398,7 +398,7 @@ func main() {
 		slog.Debug("Loaded config", "path", configFile, "config", config)
 
 		http.Handle("/public/", http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
-		http.HandleFunc("/", fileHandler)
+		http.HandleFunc("/", logGroupHandler)
 		http.HandleFunc("/raw", rawFileHandler)
 		http.HandleFunc("/view", viewFileHandler)
 
