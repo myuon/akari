@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"math"
 	"strings"
 )
 
@@ -171,24 +172,30 @@ func (d TableData) Html(options HtmlOptions) HtmlTableData {
 
 			if options.IsDiffHeader(d.Columns[i].Name) {
 				value := cell.Diff()
-				htmlRow = append(htmlRow, HtmlTableCell{
-					Text: template.HTML(fmt.Sprintf("(%+d%%)", int(value*100))),
-					Attributes: map[string]string{
-						"data-value": fmt.Sprintf("%v", value),
-					},
-				})
+				if math.Abs(value) < 0.01 {
+					htmlRow = append(htmlRow, HtmlTableCell{
+						Text: template.HTML(""),
+					})
+				} else {
+					htmlRow = append(htmlRow, HtmlTableCell{
+						Text: template.HTML(fmt.Sprintf("(%+d%%)", int(value*100))),
+						Attributes: map[string]string{
+							"data-value": fmt.Sprintf("%v", value),
+						},
+					})
+				}
 			}
 			if options.ShowRank && i == 0 {
 				value := cell.RawValue.(int)
 				prevValue := cell.PrevRawValue.(int)
 				if prevValue == 0 {
 					htmlRow = append(htmlRow, HtmlTableCell{
-						Text: template.HTML("(-)"),
+						Text: template.HTML(""),
 					})
 					continue
 				}
 
-				text := "(-)"
+				text := ""
 				if value > prevValue {
 					text = fmt.Sprintf("(↘︎%d)", value-prevValue)
 				} else if value < prevValue {
