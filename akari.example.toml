@@ -82,7 +82,8 @@ name = "mysql"
 groupingKeys = ["Query"]
 sortKeys = ["Total"]
 limit = 100
-diffs = ["Total", "Mean"]
+diffs = ["Count", "Total", "Mean"]
+showRank = true
 
 [analyzers.parser]
 regexp = '''^([0-9]{19})\s+([0-9]+)\s+(.*)$'''

@@ -66,14 +66,14 @@ func (r *SummaryRecordKeyPairs) SortBy(options SortByOptions) {
 
 	slices.SortStableFunc(records.Entries, func(a, b SummaryRecordKeyPair) int {
 		for _, sortKey := range options.SortKeyIndexes {
-			valueA := a.Record[sortKey].Value.(float64)
+			valueA, _ := a.Record[sortKey].Value.(float64)
 			if options.UsePrev {
-				valueA = a.Record[sortKey].PrevValue.(float64)
+				valueA, _ = a.Record[sortKey].PrevValue.(float64)
 			}
 
-			valueB := b.Record[sortKey].Value.(float64)
+			valueB, _ := b.Record[sortKey].Value.(float64)
 			if options.UsePrev {
-				valueB = b.Record[sortKey].PrevValue.(float64)
+				valueB, _ = b.Record[sortKey].PrevValue.(float64)
 			}
 
 			if valueA > valueB {
@@ -112,10 +112,15 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 
 		row := []TableCell{}
 		if options.AddRank {
+			prev := 0
+			if len(options.PrevRanks) > 0 {
+				prev = options.PrevRanks[record.Key] + 1
+			}
+
 			row = append(row, TableCell{
 				Value:        fmt.Sprintf("%d", j+1),
 				RawValue:     j + 1,
-				PrevRawValue: options.PrevRanks[record.Key] + 1,
+				PrevRawValue: prev,
 				Alignment:    TableColumnAlignmentRight,
 			})
 		}

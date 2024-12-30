@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) TableData {
+func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger DebugLogger) TableData {
 	parseOptions := ParseOption{
 		RegExp:   c.Parser.RegExp,
 		Columns:  c.Parser.Columns.Load(),
@@ -87,7 +87,7 @@ func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) 
 	logger.Debug("Parsed")
 
 	prevRows := map[string]LogRecordRows{}
-	if prev != nil {
+	if hasPrev {
 		p := Parse(parseOptions, prev, logger)
 
 		prevRows = p.Records
@@ -110,7 +110,7 @@ func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) 
 
 	// sort
 	prevRanks := map[string]int{}
-	if c.ShowRank {
+	if c.ShowRank && hasPrev {
 		records.SortBy(SortByOptions{
 			SortKeyIndexes: orderKeyIndexes,
 			UsePrev:        true,
@@ -120,6 +120,8 @@ func Analyze(c AnalyzerConfig, r io.Reader, prev io.Reader, logger DebugLogger) 
 			prevRanks[record.Key] = i
 		}
 	}
+
+	log.Printf("Sorted by %v", len(prevRanks))
 
 	records.SortBy(SortByOptions{
 		SortKeyIndexes: orderKeyIndexes,

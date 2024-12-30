@@ -101,6 +101,7 @@ func (d TableData) Write(w io.Writer) {
 }
 
 type HtmlOptions struct {
+	ShowRank    bool
 	DiffHeaders []string
 }
 
@@ -115,7 +116,7 @@ func (o HtmlOptions) IsDiffHeader(header string) bool {
 
 func (d TableData) Html(options HtmlOptions) HtmlTableData {
 	headers := []HtmlTableHeader{}
-	for _, column := range d.Columns {
+	for i, column := range d.Columns {
 		style := map[string]string{}
 		if column.Alignment != "" {
 			style["text-align"] = column.Alignment
@@ -127,13 +128,20 @@ func (d TableData) Html(options HtmlOptions) HtmlTableData {
 		})
 
 		if options.IsDiffHeader(column.Name) {
-			attrs := map[string]string{}
-			attrs["data-diff"] = "true"
-
 			headers = append(headers, HtmlTableHeader{
-				Text:       "(diff)",
-				Attributes: attrs,
-				Style:      style,
+				Text: "(diff)",
+				Attributes: map[string]string{
+					"data-diff": "true",
+				},
+			})
+		}
+		if options.ShowRank && i == 0 {
+			headers = append(headers, HtmlTableHeader{
+				Text: "",
+				Attributes: map[string]string{
+					"data-diff": "true",
+				},
+				Style: style,
 			})
 		}
 	}
@@ -163,13 +171,36 @@ func (d TableData) Html(options HtmlOptions) HtmlTableData {
 
 			if options.IsDiffHeader(d.Columns[i].Name) {
 				value := cell.Diff()
+				htmlRow = append(htmlRow, HtmlTableCell{
+					Text: template.HTML(fmt.Sprintf("(%+d%%)", int(value*100))),
+					Attributes: map[string]string{
+						"data-value": fmt.Sprintf("%v", value),
+					},
+				})
+			}
+			if options.ShowRank && i == 0 {
+				value := cell.RawValue.(int)
+				prevValue := cell.PrevRawValue.(int)
+				if prevValue == 0 {
+					htmlRow = append(htmlRow, HtmlTableCell{
+						Text: template.HTML("(-)"),
+					})
+					continue
+				}
 
-				attrs := map[string]string{}
-				attrs["data-value"] = fmt.Sprintf("%v", value)
+				text := "(-)"
+				if value > prevValue {
+					text = fmt.Sprintf("(↘︎%d)", value-prevValue)
+				} else if value < prevValue {
+					text = fmt.Sprintf("(↗︎%d)", prevValue-value)
+				}
 
 				htmlRow = append(htmlRow, HtmlTableCell{
-					Text:       template.HTML(fmt.Sprintf("(%+d%%)", int(value*100))),
-					Attributes: attrs,
+					Text: template.HTML(text),
+					Attributes: map[string]string{
+						// FIXME: ここのdivisorは適当。あまりに小さい数字にすると表示が変わらないため。
+						"data-value": fmt.Sprintf("%v", float64(prevValue-value)/float64(len(d.Rows)/6)),
+					},
 				})
 			}
 		}

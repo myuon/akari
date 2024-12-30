@@ -224,9 +224,11 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	prevFilePath := r.URL.Query().Get("prev")
 
+	hasPrev := true
 	prevLogFile, err := os.Open(prevFilePath)
 	if err != nil {
-		prevLogFile = nil
+		slog.Warn("Failed to open previous file", "error", err)
+		hasPrev = false
 	}
 
 	tableData := akari.HtmlTableData{}
@@ -234,9 +236,12 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
 			usedAnalyzer = analyzer
-			tableData = akari.Analyze(analyzer, logFile, prevLogFile, slog.Default()).Html(akari.HtmlOptions{
-				DiffHeaders: analyzer.Diffs,
-			})
+			tableData = akari.
+				Analyze(analyzer, logFile, hasPrev, prevLogFile, slog.Default()).
+				Html(akari.HtmlOptions{
+					ShowRank:    analyzer.ShowRank,
+					DiffHeaders: analyzer.Diffs,
+				})
 			break
 		}
 	}
@@ -349,7 +354,7 @@ func main() {
 			if analyzer.Parser.RegExp.Match(line) {
 				logger.Debug("Matched analyzer", "analyzer", analyzer.Name)
 
-				tableData = akari.Analyze(analyzer, logFile, nil, logger)
+				tableData = akari.Analyze(analyzer, logFile, false, nil, logger)
 				break
 			}
 

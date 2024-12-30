@@ -1,4 +1,9 @@
-const getHeatmapColor = (value) => {
+const clamp = (value, min, max) => {
+  return Math.min(Math.max(value, min), max);
+};
+
+const getHeatmapColor = (value_) => {
+  const value = clamp(value_, -1, 1);
   const percentage = Math.abs(value) * 100;
 
   return `color-mix(in srgb, ${
