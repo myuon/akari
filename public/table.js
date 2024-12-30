@@ -17,6 +17,7 @@ window.addEventListener("load", () => {
 
       if (value !== undefined) {
         cell.style.backgroundColor = getHeatmapColor(value);
+        Array.from(cells)[3].style.backgroundColor = getHeatmapColor(value);
       }
     }
   });

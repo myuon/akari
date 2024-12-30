@@ -50,7 +50,7 @@ func HumanizeBytes(bytes int) string {
 	} else if bytes > 1024 {
 		return fmt.Sprintf("%.1f KB", float64(bytes)/1024)
 	} else {
-		return fmt.Sprintf("%.1f  B", float64(bytes))
+		return fmt.Sprintf("%.1f B ", float64(bytes))
 	}
 }
 

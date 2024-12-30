@@ -252,7 +252,8 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err = templateFiles.ExecuteTemplate(w, "view.html", map[string]any{
 		"Title":     filePath,
-		"Analyzer":  usedAnalyzer,
+		"LogType":   logType,
+		"Config":    usedAnalyzer,
 		"TableData": tableData,
 	}); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)

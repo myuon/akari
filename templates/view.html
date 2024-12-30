@@ -10,6 +10,8 @@
 <body>
 	<h2>{{ .Title }}</h2>
   <div class="view-file">
+    <a href="/raw?type={{ .LogType }}&file={{ .Title }}">Raw</a>
+
     <table>
       <thead>
         <tr>

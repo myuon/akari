@@ -53,6 +53,9 @@ table {
 }
 
 .view-file {
+  display: grid;
+  gap: 16px;
+
   table {
     th, td {
       font-family: 'Fira Code', monospace;
@@ -61,6 +64,10 @@ table {
 
     tr:hover {
       background-color: var(--gray-300);
+    }
+
+    tr td:last-of-type {
+      position: sticky;
     }
   }
 }
