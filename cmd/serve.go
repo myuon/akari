@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -473,23 +472,24 @@ type ServeOptions struct {
 	TemplateFiles *template.Template
 	PublicFS      fs.FS
 	HashSeed      uint64
+	Port          int
+	Hostname      string
 }
 
 func Serve(options ServeOptions) error {
-	configFilePath := options.ConfigFile
-
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create watcher: %w", err)
 	}
 	defer watcher.Close()
 
 	go func() {
 		for event := range watcher.Events {
-			if event.Name == configFilePath {
+			if event.Name == options.ConfigFile {
 				var c akari.AkariConfig
-				if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
-					log.Fatal(err)
+				if _, err := toml.DecodeFile(options.ConfigFile, &c); err != nil {
+					slog.Error("Failed to load config", "error", err)
+					continue
 				}
 
 				slog.Info("Config reloaded")
@@ -500,17 +500,17 @@ func Serve(options ServeOptions) error {
 	}()
 
 	var c akari.AkariConfig
-	if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
+	if _, err := toml.DecodeFile(options.ConfigFile, &c); err != nil {
 		slog.Error("Failed to load config", "error", err)
 	}
 
 	config.Store(c)
 
-	if err := watcher.Add(configFilePath); err != nil {
+	if err := watcher.Add(options.ConfigFile); err != nil {
 		slog.Error("Failed to watch config file", "error", err)
 	}
 
-	slog.Debug("Loaded config", "path", configFilePath, "config", config)
+	slog.Debug("Loaded config", "path", options.ConfigFile, "config", config)
 
 	mux := http.NewServeMux()
 
@@ -520,20 +520,10 @@ func Serve(options ServeOptions) error {
 	mux.HandleFunc("/view", viewFileHandler)
 	mux.HandleFunc("/filter", filterViewHandler)
 
-	hostName := "localhost"
-	if val, ok := os.LookupEnv("HOSTNAME"); ok {
-		hostName = val
-	}
-
-	port := 8089
-	if val, ok := os.LookupEnv("PORT"); ok {
-		port, _ = strconv.Atoi(val)
-	}
-
-	slog.Info("Starting server", "port", port, "url", fmt.Sprintf("http://localhost:%v", port))
+	slog.Info("Starting server", "url", fmt.Sprintf("http://%v:%v", options.Hostname, options.Port))
 
 	if err := http.ListenAndServe(
-		fmt.Sprintf("%v:%v", hostName, port),
+		fmt.Sprintf("%v:%v", options.Hostname, options.Port),
 		withServerData(mux, ServerData{
 			TemplateFiles: options.TemplateFiles,
 			HashSeed:      options.HashSeed,
