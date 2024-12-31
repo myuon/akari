@@ -267,22 +267,8 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		"LogType":   logType,
 		"Config":    usedAnalyzer,
 		"TableData": tableData,
-		"toStyle": func(style map[string]string) string {
-			result := []string{}
-			for key, value := range style {
-				result = append(result, fmt.Sprintf("%v:%v", key, value))
-			}
-
-			return strings.Join(result, ";")
-		},
-		"toAttrs": func(attrs map[string]string) template.HTMLAttr {
-			result := []string{}
-			for key, value := range attrs {
-				result = append(result, fmt.Sprintf(`%v="%v"`, key, value))
-			}
-
-			return template.HTMLAttr(strings.Join(result, " "))
-		},
+		"toStyle":   akari.HtmlStyle,
+		"toAttrs":   akari.HtmlAttrs,
 	}); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		log.Println("Template execution error:", err)
@@ -423,22 +409,8 @@ func filterViewHandler(w http.ResponseWriter, r *http.Request) {
 			Headers: tableHeaders,
 			Rows:    tableRows,
 		},
-		"toStyle": func(style map[string]string) string {
-			result := []string{}
-			for key, value := range style {
-				result = append(result, fmt.Sprintf("%v:%v", key, value))
-			}
-
-			return strings.Join(result, ";")
-		},
-		"toAttrs": func(attrs map[string]string) template.HTMLAttr {
-			result := []string{}
-			for key, value := range attrs {
-				result = append(result, fmt.Sprintf(`%v="%v"`, key, value))
-			}
-
-			return template.HTMLAttr(strings.Join(result, " "))
-		},
+		"toStyle": akari.HtmlStyle,
+		"toAttrs": akari.HtmlAttrs,
 	}); err != nil {
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 		log.Println("Template execution error:", err)

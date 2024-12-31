@@ -1,6 +1,10 @@
 package akari
 
-import "html/template"
+import (
+	"fmt"
+	"html/template"
+	"strings"
+)
 
 type HtmlTableHeader struct {
 	Text       string
@@ -22,4 +26,22 @@ type HtmlTableRow struct {
 type HtmlTableData struct {
 	Headers []HtmlTableHeader
 	Rows    []HtmlTableRow
+}
+
+func HtmlStyle(style map[string]string) template.CSS {
+	result := []string{}
+	for key, value := range style {
+		result = append(result, fmt.Sprintf("%v:%v", key, value))
+	}
+
+	return template.CSS(strings.Join(result, ";"))
+}
+
+func HtmlAttrs(attrs map[string]string) template.HTMLAttr {
+	result := []string{}
+	for key, value := range attrs {
+		result = append(result, fmt.Sprintf(`%v="%v"`, key, value))
+	}
+
+	return template.HTMLAttr(strings.Join(result, " "))
 }
