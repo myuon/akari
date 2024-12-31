@@ -9,4 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0
 )
 
-require golang.org/x/sys v0.28.0 // indirect
+require (
+	github.com/pierrec/xxHash v0.1.5 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+)

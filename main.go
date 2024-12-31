@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"fmt"
-	"hash/maphash"
 	"html/template"
 	"io"
 	"log"
@@ -36,7 +35,7 @@ var (
 	rootDir        = "."
 	configFilePath = "akari.toml"
 	config         = akari.NewGlobalVar(akari.AkariConfig{})
-	globalSeed     = maphash.MakeSeed()
+	globalSeed     = uint64(0xdeadbeef)
 )
 
 type FileData struct {

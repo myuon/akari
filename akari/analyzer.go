@@ -2,7 +2,6 @@ package akari
 
 import (
 	"fmt"
-	"hash/maphash"
 	"io"
 )
 
@@ -12,7 +11,7 @@ type AnalyzeOptions struct {
 	HasPrev bool
 	Prev    io.Reader
 	Logger  DebugLogger
-	Seed    maphash.Seed
+	Seed    uint64
 }
 
 func Analyze(options AnalyzeOptions) (TableData, error) {

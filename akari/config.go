@@ -2,7 +2,6 @@ package akari
 
 import (
 	"fmt"
-	"hash/maphash"
 	"regexp"
 )
 
@@ -166,7 +165,7 @@ type AnalyzerConfig struct {
 	ShowRank     bool
 }
 
-func (config AnalyzerConfig) ParseOptions(seed maphash.Seed) (ParseOptions, error) {
+func (config AnalyzerConfig) ParseOptions(seed uint64) (ParseOptions, error) {
 	columns, err := config.Parser.Columns.Load()
 	if err != nil {
 		return ParseOptions{}, fmt.Errorf("Failed to load columns (%w)", err)

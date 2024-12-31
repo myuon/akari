@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
-	"hash/maphash"
 	"io"
 	"regexp"
+
+	"github.com/pierrec/xxHash/xxHash64"
 )
 
 type ParseColumnOptions struct {
@@ -20,14 +21,13 @@ type ParseOptions struct {
 	RegExp   *regexp.Regexp
 	Columns  []ParseColumnOptions
 	Keys     []string
-	HashSeed maphash.Seed
+	HashSeed uint64
 }
 
 func Parse(options ParseOptions, r io.Reader, logger DebugLogger) (LogRecords, error) {
 	scanner := bufio.NewScanner(r)
 
-	hash := maphash.Hash{}
-	hash.SetSeed(options.HashSeed)
+	hash := xxHash64.New(options.HashSeed)
 	records := map[string]LogRecordRows{}
 
 	logger.Debug("Start scanning")
@@ -89,9 +89,7 @@ func Parse(options ParseOptions, r io.Reader, logger DebugLogger) (LogRecords, e
 			row = append(row, valueAny)
 		}
 
-		hash.Reset()
-		hash.WriteString(fmt.Sprintf("%v", key))
-		hashKey := base64.RawStdEncoding.EncodeToString(hash.Sum(nil))
+		hashKey := base64.RawStdEncoding.EncodeToString(hash.Sum([]byte(fmt.Sprintf("%v", key))))
 		records[string(hashKey)] = append(records[string(hashKey)], row)
 	}
 
