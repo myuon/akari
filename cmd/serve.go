@@ -448,7 +448,7 @@ func filterViewHandler(w http.ResponseWriter, r *http.Request) {
 
 type ContextKey string
 
-const contextKey ContextKey = "appData"
+const contextKey ContextKey = "serverData"
 
 type ServerData struct {
 	TemplateFiles *template.Template
