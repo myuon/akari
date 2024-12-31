@@ -2,6 +2,7 @@ package akari
 
 import (
 	"fmt"
+	"hash/maphash"
 	"regexp"
 )
 
@@ -49,7 +50,7 @@ type ParserColumnConfig struct {
 	Converters []ParserColumnConverterConfig
 }
 
-func (c ParserColumnConfig) Load() (ParseColumnOption, error) {
+func (c ParserColumnConfig) Load() (ParseColumnOptions, error) {
 	spName := c.Specifier.Name
 	if spName == "" && c.Specifier.Index == 0 {
 		spName = c.Name
@@ -59,13 +60,13 @@ func (c ParserColumnConfig) Load() (ParseColumnOption, error) {
 	for _, converter := range c.Converters {
 		c, err := converter.Load()
 		if err != nil {
-			return ParseColumnOption{}, fmt.Errorf("Failed to load converter (%w)", err)
+			return ParseColumnOptions{}, fmt.Errorf("Failed to load converter (%w)", err)
 		}
 
 		cs = append(cs, c)
 	}
 
-	return ParseColumnOption{
+	return ParseColumnOptions{
 		Name:        c.Name,
 		SubexpName:  spName,
 		SubexpIndex: c.Specifier.Index,
@@ -75,8 +76,8 @@ func (c ParserColumnConfig) Load() (ParseColumnOption, error) {
 
 type ParserColumnConfigs []ParserColumnConfig
 
-func (c ParserColumnConfigs) Load() ([]ParseColumnOption, error) {
-	cs := []ParseColumnOption{}
+func (c ParserColumnConfigs) Load() ([]ParseColumnOptions, error) {
+	cs := []ParseColumnOptions{}
 	for _, column := range c {
 		c, err := column.Load()
 		if err != nil {
@@ -163,6 +164,118 @@ type AnalyzerConfig struct {
 	Limit        int
 	Diffs        []string
 	ShowRank     bool
+}
+
+func (config AnalyzerConfig) ParseOptions(seed maphash.Seed) (ParseOptions, error) {
+	columns, err := config.Parser.Columns.Load()
+	if err != nil {
+		return ParseOptions{}, fmt.Errorf("Failed to load columns (%w)", err)
+	}
+
+	parseOptions := ParseOptions{
+		RegExp:   config.Parser.RegExp,
+		Columns:  columns,
+		Keys:     config.GroupingKeys,
+		HashSeed: seed,
+	}
+	return parseOptions, nil
+}
+
+func (config AnalyzerConfig) QueryOptions() ([]Query, error) {
+	queryOptions := []Query{}
+	for _, query := range config.Query {
+		var filter *QueryFilter
+		if query.Filter != nil {
+			f, err := query.Filter.Load()
+			if err != nil {
+				return nil, fmt.Errorf("Failed to load filter (%w)", err)
+			}
+
+			filter = &f
+		}
+
+		function := query.Function
+		if function == "" {
+			function = QueryFunctionAny
+		}
+
+		queryOption := Query{
+			Name:     query.GetName(),
+			From:     query.From,
+			Function: function,
+			Filter:   filter,
+		}
+
+		if len(query.Columns) > 0 {
+			for _, column := range query.Columns {
+				name := queryOption.Name
+				if column.Name != nil {
+					name = *column.Name
+				}
+				from := queryOption.From
+				if column.From != "" {
+					from = column.From
+				}
+				function := queryOption.Function
+				if column.Function != "" {
+					function = column.Function
+				}
+				filter := queryOption.Filter
+				if column.Filter != nil {
+					f, err := column.Filter.Load()
+					if err != nil {
+						return nil, fmt.Errorf("Failed to load filter (%w)", err)
+					}
+
+					filter = &f
+				}
+
+				queryOptions = append(queryOptions, Query{
+					Name:     name,
+					From:     from,
+					Function: function,
+					Filter:   filter,
+				})
+			}
+		} else {
+			queryOptions = append(queryOptions, queryOption)
+		}
+	}
+
+	return queryOptions, nil
+}
+
+func (config AnalyzerConfig) FormatOptions() (FormatOptions, error) {
+	columns := []FormatColumnOptions{}
+	for _, query := range config.Query {
+		if len(query.Columns) > 0 {
+			for _, column := range query.Columns {
+				name := query.GetName()
+				if column.Name != nil {
+					name = *column.Name
+				}
+
+				columns = append(columns, FormatColumnOptions{
+					Name:          name,
+					Format:        query.FormatOption.Format,
+					Alignment:     query.FormatOption.Alignment,
+					HumanizeBytes: query.FormatOption.HumanizeBytes,
+				})
+			}
+		} else {
+			columns = append(columns, FormatColumnOptions{
+				Name:          query.GetName(),
+				Format:        query.FormatOption.Format,
+				Alignment:     query.FormatOption.Alignment,
+				HumanizeBytes: query.FormatOption.HumanizeBytes,
+			})
+		}
+	}
+
+	return FormatOptions{
+		ColumnOptions: columns,
+		Limit:         config.Limit,
+	}, nil
 }
 
 type AkariConfig struct {

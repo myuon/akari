@@ -319,48 +319,73 @@ func filterViewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prevFilePath := r.URL.Query().Get("prev")
-
-	hasPrev := true
-	prevLogFile, err := os.Open(prevFilePath)
-	if err != nil {
-		slog.Warn("Failed to open previous file", "error", err)
-		hasPrev = false
-	}
-
 	key := r.URL.Query().Get("key")
 	if key == "" {
 		http.Error(w, "Key not specified", http.StatusBadRequest)
 		return
 	}
 
-	filtered := []akari.SummaryRowCell{}
+	columns := akari.LogRecordColumns{}
+	filtered := akari.LogRecordRows{}
 	usedAnalyzer := akari.AnalyzerConfig{}
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
 			usedAnalyzer = analyzer
 
-			summary, err := akari.Summarize(akari.AnalyzeOptions{
-				Config:  analyzer,
-				Source:  logFile,
-				HasPrev: hasPrev,
-				Prev:    prevLogFile,
-				Logger:  slog.Default(),
-				Seed:    globalSeed,
-			})
+			parseOptions, err := analyzer.ParseOptions(globalSeed)
+			if err != nil {
+				http.Error(w, "Failed to get parse options", http.StatusInternalServerError)
+			}
+
+			parsed, err := akari.Parse(parseOptions, logFile, slog.Default())
 			if err != nil {
 				http.Error(w, "Failed to analyze log", http.StatusInternalServerError)
 				return
 			}
 
-			filtered = summary.Rows[key]
+			filtered = parsed.Records[key]
+			columns = parsed.Columns
 			break
 		}
 	}
 
 	_ = usedAnalyzer
 
-	w.Write([]byte(fmt.Sprintf("%v", filtered)))
+	groupByTimestamp := map[string]akari.LogRecordRows{}
+	for _, record := range filtered {
+		timestamp := record[columns.GetIndex("Timestamp")]
+		if timestamp == nil {
+			continue
+		}
+
+		timestampStr := fmt.Sprintf("%v", timestamp)
+		groupByTimestamp[timestampStr] = append(groupByTimestamp[timestampStr], record)
+	}
+
+	entries := []struct {
+		Timestamp string
+		Records   akari.LogRecordRows
+	}{}
+	for timestamp, records := range groupByTimestamp {
+		entries = append(entries, struct {
+			Timestamp string
+			Records   akari.LogRecordRows
+		}{
+			Timestamp: timestamp,
+			Records:   records,
+		})
+	}
+
+	slices.SortStableFunc(entries, func(a, b struct {
+		Timestamp string
+		Records   akari.LogRecordRows
+	}) int {
+		return strings.Compare(a.Timestamp, b.Timestamp)
+	})
+
+	for _, pair := range entries {
+		fmt.Fprintf(w, "%v: %v\n", pair.Timestamp, len(pair.Records))
+	}
 }
 
 func main() {

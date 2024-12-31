@@ -9,21 +9,21 @@ import (
 	"regexp"
 )
 
-type ParseColumnOption struct {
+type ParseColumnOptions struct {
 	Name        string
 	SubexpName  string
 	SubexpIndex int
 	Converters  []Converter
 }
 
-type ParseOption struct {
+type ParseOptions struct {
 	RegExp   *regexp.Regexp
-	Columns  []ParseColumnOption
+	Columns  []ParseColumnOptions
 	Keys     []string
 	HashSeed maphash.Seed
 }
 
-func Parse(options ParseOption, r io.Reader, logger DebugLogger) (LogRecords, error) {
+func Parse(options ParseOptions, r io.Reader, logger DebugLogger) (LogRecords, error) {
 	scanner := bufio.NewScanner(r)
 
 	hash := maphash.Hash{}
