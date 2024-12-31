@@ -103,7 +103,7 @@ type FormatOptions struct {
 }
 
 func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
-	rows := [][]TableCell{}
+	rows := []TableRow{}
 	for j, record := range r.Entries {
 		if options.Limit > 0 && j > options.Limit {
 			break
@@ -153,7 +153,10 @@ func (r SummaryRecordKeyPairs) Format(options FormatOptions) TableData {
 			})
 		}
 
-		rows = append(rows, row)
+		rows = append(rows, TableRow{
+			Key:   record.Key,
+			Cells: row,
+		})
 	}
 
 	columns := []TableColumn{}

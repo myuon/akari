@@ -14,7 +14,12 @@ type HtmlTableCell struct {
 	Style      map[string]string
 }
 
+type HtmlTableRow struct {
+	Key   string
+	Cells []HtmlTableCell
+}
+
 type HtmlTableData struct {
 	Headers []HtmlTableHeader
-	Rows    [][]HtmlTableCell
+	Rows    []HtmlTableRow
 }

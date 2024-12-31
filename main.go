@@ -248,7 +248,13 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		if logType == analyzer.Name {
 			usedAnalyzer = analyzer
 
-			result, err := akari.Analyze(analyzer, logFile, hasPrev, prevLogFile, slog.Default())
+			result, err := akari.Analyze(akari.AnalyzeOptions{
+				Config:  analyzer,
+				Source:  logFile,
+				HasPrev: hasPrev,
+				Prev:    prevLogFile,
+				Logger:  slog.Default(),
+			})
 			if err != nil {
 				http.Error(w, "Failed to analyze log", http.StatusInternalServerError)
 				return
@@ -290,6 +296,71 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Template execution error:", err)
 		return
 	}
+}
+
+func filterViewHandler(w http.ResponseWriter, r *http.Request) {
+	logType := r.URL.Query().Get("type")
+	if logType == "" {
+		logType = "nginx"
+	}
+
+	filePath := r.URL.Query().Get("file")
+	if filePath == "" {
+		http.Error(w, "File not specified", http.StatusBadRequest)
+		return
+	}
+
+	logFile, err := os.Open(filePath)
+	if err != nil {
+		http.Error(w, "Failed to open file", http.StatusInternalServerError)
+		return
+	}
+
+	prevFilePath := r.URL.Query().Get("prev")
+
+	hasPrev := true
+	prevLogFile, err := os.Open(prevFilePath)
+	if err != nil {
+		slog.Warn("Failed to open previous file", "error", err)
+		hasPrev = false
+	}
+
+	key := r.URL.Query().Get("key")
+	if key == "" {
+		http.Error(w, "Key not specified", http.StatusBadRequest)
+		return
+	}
+
+	tableData := akari.HtmlTableData{}
+	usedAnalyzer := akari.AnalyzerConfig{}
+	for _, analyzer := range config.Load().Analyzers {
+		if logType == analyzer.Name {
+			usedAnalyzer = analyzer
+
+			result, err := akari.Analyze(akari.AnalyzeOptions{
+				Config:  analyzer,
+				Source:  logFile,
+				HasPrev: hasPrev,
+				Prev:    prevLogFile,
+				Logger:  slog.Default(),
+			})
+			if err != nil {
+				http.Error(w, "Failed to analyze log", http.StatusInternalServerError)
+				return
+			}
+
+			tableData = result.Html(akari.HtmlOptions{
+				ShowRank:    analyzer.ShowRank,
+				DiffHeaders: analyzer.Diffs,
+			})
+			break
+		}
+	}
+
+	_ = tableData
+	_ = usedAnalyzer
+
+	w.Write([]byte("foo,bar,baz,quux"))
 }
 
 func main() {
@@ -372,7 +443,13 @@ func main() {
 			if analyzer.Parser.RegExp.Match(line) {
 				logger.Debug("Matched analyzer", "analyzer", analyzer.Name)
 
-				result, err := akari.Analyze(analyzer, logFile, false, nil, logger)
+				result, err := akari.Analyze(akari.AnalyzeOptions{
+					Config:  analyzer,
+					Source:  logFile,
+					HasPrev: false,
+					Prev:    nil,
+					Logger:  logger,
+				})
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -431,6 +508,7 @@ func main() {
 		http.HandleFunc("/", logGroupHandler)
 		http.HandleFunc("/raw", rawFileHandler)
 		http.HandleFunc("/view", viewFileHandler)
+		http.HandleFunc("/filter", filterViewHandler)
 
 		hostName := "localhost"
 		if val, ok := os.LookupEnv("HOSTNAME"); ok {

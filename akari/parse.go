@@ -2,6 +2,7 @@ package akari
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"hash/maphash"
 	"io"
@@ -90,7 +91,7 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) (LogRecords, er
 
 		hash.Reset()
 		hash.WriteString(fmt.Sprintf("%v", key))
-		hashKey := hash.Sum(nil)
+		hashKey := base64.RawStdEncoding.EncodeToString(hash.Sum(nil))
 		records[string(hashKey)] = append(records[string(hashKey)], row)
 	}
 

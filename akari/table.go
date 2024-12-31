@@ -52,9 +52,14 @@ func (c TableCell) Diff() float64 {
 	}
 }
 
+type TableRow struct {
+	Key   string
+	Cells []TableCell
+}
+
 type TableData struct {
 	Columns []TableColumn
-	Rows    [][]TableCell
+	Rows    []TableRow
 }
 
 func (d TableData) Write(w io.Writer) {
@@ -72,8 +77,8 @@ func (d TableData) Write(w io.Writer) {
 	for _, row := range d.Rows {
 		tableRow := []string{}
 		for i := range d.Columns {
-			tableRow = append(tableRow, row[i].Value)
-			widths[i] = max(widths[i], len(row[i].Value))
+			tableRow = append(tableRow, row.Cells[i].Value)
+			widths[i] = max(widths[i], len(row.Cells[i].Value))
 		}
 
 		table = append(table, tableRow)
@@ -147,11 +152,11 @@ func (d TableData) Html(options HtmlOptions) HtmlTableData {
 		}
 	}
 
-	rows := [][]HtmlTableCell{}
+	rows := []HtmlTableRow{}
 	for _, row := range d.Rows {
 		htmlRow := []HtmlTableCell{}
 		for i := range d.Columns {
-			cell := row[i]
+			cell := row.Cells[i]
 
 			style := map[string]string{}
 			if cell.Alignment != "" {
@@ -211,7 +216,10 @@ func (d TableData) Html(options HtmlOptions) HtmlTableData {
 				})
 			}
 		}
-		rows = append(rows, htmlRow)
+		rows = append(rows, HtmlTableRow{
+			Key:   row.Key,
+			Cells: htmlRow,
+		})
 	}
 
 	return HtmlTableData{

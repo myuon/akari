@@ -6,23 +6,31 @@ import (
 	"io"
 )
 
-func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger DebugLogger) (TableData, error) {
-	columns, err := c.Parser.Columns.Load()
+type AnalyzeOptions struct {
+	Config  AnalyzerConfig
+	Source  io.Reader
+	HasPrev bool
+	Prev    io.Reader
+	Logger  DebugLogger
+}
+
+func Analyze(options AnalyzeOptions) (TableData, error) {
+	columns, err := options.Config.Parser.Columns.Load()
 	if err != nil {
 		return TableData{}, fmt.Errorf("Failed to load columns (%w)", err)
 	}
 
 	parseOptions := ParseOption{
-		RegExp:   c.Parser.RegExp,
+		RegExp:   options.Config.Parser.RegExp,
 		Columns:  columns,
-		Keys:     c.GroupingKeys,
+		Keys:     options.Config.GroupingKeys,
 		HashSeed: maphash.MakeSeed(),
 	}
 	queryOptions := []Query{}
 	formatOptions := FormatOptions{
-		Limit: c.Limit,
+		Limit: options.Config.Limit,
 	}
-	for _, query := range c.Query {
+	for _, query := range options.Config.Query {
 		var filter *QueryFilter
 		if query.Filter != nil {
 			f, err := query.Filter.Load()
@@ -93,18 +101,18 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 		}
 	}
 
-	logger.Debug("Loaded options")
+	options.Logger.Debug("Loaded options")
 
-	parsed, err := Parse(parseOptions, r, logger)
+	parsed, err := Parse(parseOptions, options.Source, options.Logger)
 	if err != nil {
 		return TableData{}, fmt.Errorf("Failed to parse (%w)", err)
 	}
 
-	logger.Debug("Parsed")
+	options.Logger.Debug("Parsed")
 
 	prevRows := map[string]LogRecordRows{}
-	if hasPrev {
-		p, err := Parse(parseOptions, prev, logger)
+	if options.HasPrev {
+		p, err := Parse(parseOptions, options.Prev, options.Logger)
 		if err != nil {
 			return TableData{}, fmt.Errorf("Failed to parse previous (%w)", err)
 		}
@@ -118,18 +126,18 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 		return TableData{}, fmt.Errorf("Failed to summarize (%w)", err)
 	}
 
-	logger.Debug("Summarized")
+	options.Logger.Debug("Summarized")
 
 	records := summary.GetKeyPairs()
 
 	orderKeyIndexes := []int{}
-	for _, orderKey := range c.SortKeys {
+	for _, orderKey := range options.Config.SortKeys {
 		orderKeyIndexes = append(orderKeyIndexes, summary.GetIndex(orderKey))
 	}
 
 	// sort
 	prevRanks := map[string]int{}
-	if c.ShowRank && hasPrev {
+	if options.Config.ShowRank && options.HasPrev {
 		records.SortBy(SortByOptions{
 			SortKeyIndexes: orderKeyIndexes,
 			UsePrev:        true,
@@ -144,14 +152,14 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 		SortKeyIndexes: orderKeyIndexes,
 	})
 
-	logger.Debug("Sorted")
+	options.Logger.Debug("Sorted")
 
 	// format
-	formatOptions.AddRank = c.ShowRank
+	formatOptions.AddRank = options.Config.ShowRank
 	formatOptions.PrevRanks = prevRanks
 	result := records.Format(formatOptions)
 
-	logger.Debug("Formatted")
+	options.Logger.Debug("Formatted")
 
 	return result, nil
 }

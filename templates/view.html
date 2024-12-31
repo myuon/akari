@@ -21,14 +21,18 @@
           {{ range .TableData.Headers }}
           <th style="{{ call $.toStyle .Style }}" {{ call $.toAttrs .Attributes }}>{{ .Text }}</th>
           {{ end }}
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {{ range .TableData.Rows }}
-        <tr>
-          {{ range . }}
+        <tr id="{{ .Key }}">
+          {{ range .Cells }}
           <td style="{{ call $.toStyle .Style }}" {{ call $.toAttrs .Attributes }}>{{ .Text }}</td>
           {{ end }}
+          <td>
+            <a href="/filter?type={{ $.LogType }}&file={{ $.Title }}&prev={{ $.PrevPath }}&key={{ .Key }}">Filter</a>
+          </td>
         </tr>
         {{ end }}
       </tbody>
