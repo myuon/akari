@@ -37,12 +37,12 @@ columns = [
   { name = "Count", function = "count" },
   { name = "Total", function = "sum" },
   { name = "Mean", function = "mean" },
-  { name = "Stddev", function = "stddev" },
+  # { name = "Stddev", function = "stddev" },
   { name = "Min", function = "min" },
   { name = "P50", function = "p50" },
-  { name = "P90", function = "p90" },
+  # { name = "P90", function = "p90" },
   { name = "P95", function = "p95" },
-  { name = "P99", function = "p99" },
+  # { name = "P99", function = "p99" },
   { name = "Max", function = "max" },
 ]
 
@@ -62,12 +62,12 @@ formatOption = { alignment = "right", humanizeBytes = true }
 columns = [
   { name = "TotalBs", function = "sum" },
   { name = "MeanBs", function = "mean" },
-  { name = "MinBs", function = "min" },
-  { name = "MaxBs", function = "max" },
+  # { name = "MinBs", function = "min" },
+  # { name = "MaxBs", function = "max" },
 ]
 
-[[analyzers.query]]
-from = "Protocol"
+# [[analyzers.query]]
+# from = "Protocol"
 
 [[analyzers.query]]
 from = "Method"
