@@ -22,35 +22,33 @@ const (
 	QueryFunctionAny    QueryFunction = "any"
 )
 
-func (f QueryFunction) ResultType(originalType LogRecordType) LogRecordType {
+func (f QueryFunction) ResultType(originalType LogRecordType) (LogRecordType, error) {
 	switch f {
 	case QueryFunctionCount:
-		return LogRecordTypeInt
+		return LogRecordTypeInt, nil
 	case QueryFunctionSum:
-		return originalType
+		return originalType, nil
 	case QueryFunctionMean:
-		return originalType
+		return originalType, nil
 	case QueryFunctionMax:
-		return originalType
+		return originalType, nil
 	case QueryFunctionMin:
-		return originalType
+		return originalType, nil
 	case QueryFunctionStddev:
-		return originalType
+		return originalType, nil
 	case QueryFunctionP50:
-		return originalType
+		return originalType, nil
 	case QueryFunctionP90:
-		return originalType
+		return originalType, nil
 	case QueryFunctionP95:
-		return originalType
+		return originalType, nil
 	case QueryFunctionP99:
-		return originalType
+		return originalType, nil
 	case QueryFunctionAny:
-		return originalType
+		return originalType, nil
 	default:
-		log.Fatalf("Unknown function: %v", f)
+		return "", fmt.Errorf("Unknown function: %v", f)
 	}
-
-	return LogRecordTypeString
 }
 
 func evaluate[T int | float64](f QueryFunction, values []T) any {
@@ -98,30 +96,33 @@ type QueryFilter struct {
 	}
 }
 
-func applyRow[T int | float64](f QueryFilter, value T) bool {
+func applyRow[T int | float64](f QueryFilter, value T) (bool, error) {
 	switch f.Type {
 	case QueryFilterTypeBetween:
-		return float64(value) >= f.Between.Start && float64(value) <= f.Between.End
+		return float64(value) >= f.Between.Start && float64(value) <= f.Between.End, nil
 	default:
-		log.Fatalf("Unknown filter type: %v", f.Type)
+		return false, fmt.Errorf("Unknown filter type: %v", f.Type)
 	}
-
-	return false
 }
 
-func apply[T int | float64](f *QueryFilter, values []T) []T {
+func apply[T int | float64](f *QueryFilter, values []T) ([]T, error) {
 	if f == nil {
-		return values
+		return values, nil
 	}
 
 	filtered := []T{}
 	for _, value := range values {
-		if applyRow(*f, value) {
+		cond, err := applyRow(*f, value)
+		if err != nil {
+			return nil, err
+		}
+
+		if cond {
 			filtered = append(filtered, value)
 		}
 	}
 
-	return filtered
+	return filtered, nil
 }
 
 type Query struct {
@@ -138,24 +139,47 @@ func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, LogR
 	switch valueType {
 	case LogRecordTypeInt:
 		values := GetLogRecordsNumbers[int](records, fromIndex)
-		values = apply(a.Filter, values)
+		v, err := apply(a.Filter, values)
+		if err != nil {
+			return nil, "", err
+		}
+		values = v
 
-		return evaluate(a.Function, values), a.Function.ResultType(valueType), nil
+		t, err := a.Function.ResultType(valueType)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return evaluate(a.Function, values), t, nil
 	case LogRecordTypeInt64:
 		fallthrough
 	case LogRecordTypeFloat64:
 		values := GetLogRecordsNumbers[float64](records, fromIndex)
-		values = apply(a.Filter, values)
+		v, err := apply(a.Filter, values)
+		if err != nil {
+			return nil, "", err
+		}
+		values = v
 
-		return evaluate(a.Function, values), a.Function.ResultType(valueType), nil
+		t, err := a.Function.ResultType(valueType)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return evaluate(a.Function, values), t, nil
 	case LogRecordTypeString:
 		values := records.GetStrings(fromIndex)
 
+		t, err := a.Function.ResultType(valueType)
+		if err != nil {
+			return nil, "", err
+		}
+
 		switch a.Function {
 		case QueryFunctionCount:
-			return len(values), a.Function.ResultType(valueType), nil
+			return len(values), t, nil
 		case QueryFunctionAny:
-			return values[0], a.Function.ResultType(valueType), nil
+			return values[0], t, nil
 		default:
 			return nil, "", fmt.Errorf("Unknown function: %v", a.Function)
 		}

@@ -246,12 +246,17 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
 			usedAnalyzer = analyzer
-			tableData = akari.
-				Analyze(analyzer, logFile, hasPrev, prevLogFile, slog.Default()).
-				Html(akari.HtmlOptions{
-					ShowRank:    analyzer.ShowRank,
-					DiffHeaders: analyzer.Diffs,
-				})
+
+			result, err := akari.Analyze(analyzer, logFile, hasPrev, prevLogFile, slog.Default())
+			if err != nil {
+				http.Error(w, "Failed to analyze log", http.StatusInternalServerError)
+				return
+			}
+
+			tableData = result.Html(akari.HtmlOptions{
+				ShowRank:    analyzer.ShowRank,
+				DiffHeaders: analyzer.Diffs,
+			})
 			break
 		}
 	}
@@ -364,7 +369,12 @@ func main() {
 			if analyzer.Parser.RegExp.Match(line) {
 				logger.Debug("Matched analyzer", "analyzer", analyzer.Name)
 
-				tableData = akari.Analyze(analyzer, logFile, false, nil, logger)
+				result, err := akari.Analyze(analyzer, logFile, false, nil, logger)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				tableData = result
 				break
 			}
 

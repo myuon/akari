@@ -2,7 +2,6 @@ package akari
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,47 +9,47 @@ import (
 )
 
 type Converter interface {
-	Convert(any) (any, LogRecordType)
+	Convert(any) (any, LogRecordType, error)
 }
 
 type ConvertParseInt struct{}
 
-func (c ConvertParseInt) Convert(a any) (any, LogRecordType) {
+func (c ConvertParseInt) Convert(a any) (any, LogRecordType, error) {
 	i, err := strconv.Atoi(a.(string))
 	if err != nil {
-		log.Fatalf("Failed to convert %v to int: %v", a, err)
+		return nil, "", fmt.Errorf("Failed to convert %v to int: %v", a, err)
 	}
 
-	return i, LogRecordTypeInt
+	return i, LogRecordTypeInt, nil
 }
 
 type ConvertParseInt64 struct{}
 
-func (c ConvertParseInt64) Convert(a any) (any, LogRecordType) {
+func (c ConvertParseInt64) Convert(a any) (any, LogRecordType, error) {
 	i, err := strconv.ParseInt(a.(string), 10, 64)
 	if err != nil {
-		log.Fatalf("Failed to convert %v to int64: %v", a, err)
+		return nil, "", fmt.Errorf("Failed to convert %v to int64 (%w)", a, err)
 	}
 
-	return i, LogRecordTypeInt64
+	return i, LogRecordTypeInt64, nil
 }
 
 type ConvertParseFloat64 struct{}
 
-func (c ConvertParseFloat64) Convert(a any) (any, LogRecordType) {
+func (c ConvertParseFloat64) Convert(a any) (any, LogRecordType, error) {
 	f, err := strconv.ParseFloat(a.(string), 64)
 	if err != nil {
-		log.Fatalf("Failed to convert %v to float64: %v", a, err)
+		return nil, "", fmt.Errorf("Failed to convert %v to float64 (%w)", a, err)
 	}
 
-	return f, LogRecordTypeFloat64
+	return f, LogRecordTypeFloat64, nil
 }
 
 type ConvertQueryParams struct {
 	Replacer string
 }
 
-func (c ConvertQueryParams) Convert(a any) (any, LogRecordType) {
+func (c ConvertQueryParams) Convert(a any) (any, LogRecordType, error) {
 	url := a.(string)
 
 	if strings.Contains(url, "?") {
@@ -66,42 +65,42 @@ func (c ConvertQueryParams) Convert(a any) (any, LogRecordType) {
 		url = fmt.Sprintf("%s?%s", path, strings.Join(masked, "&"))
 	}
 
-	return url, LogRecordTypeString
+	return url, LogRecordTypeString, nil
 }
 
 type ConvertUnixNano struct{}
 
-func (c ConvertUnixNano) Convert(a any) (any, LogRecordType) {
+func (c ConvertUnixNano) Convert(a any) (any, LogRecordType, error) {
 	nanoSec := a.(int64)
 
 	timestamp := time.Unix(nanoSec/1e9, nanoSec%1e9).Local()
-	return timestamp, LogRecordTypeDateTime
+	return timestamp, LogRecordTypeDateTime, nil
 }
 
 type ConvertUnixMilli struct{}
 
-func (c ConvertUnixMilli) Convert(a any) (any, LogRecordType) {
+func (c ConvertUnixMilli) Convert(a any) (any, LogRecordType, error) {
 	milliSec := a.(int64)
 
 	timestamp := time.Unix(milliSec/1e3, (milliSec%1e3)*1e6).Local()
-	return timestamp, LogRecordTypeDateTime
+	return timestamp, LogRecordTypeDateTime, nil
 }
 
 type ConvertUnix struct{}
 
-func (c ConvertUnix) Convert(a any) (any, LogRecordType) {
+func (c ConvertUnix) Convert(a any) (any, LogRecordType, error) {
 	sec := a.(int64)
 
 	timestamp := time.Unix(sec, 0).Local()
-	return timestamp, LogRecordTypeDateTime
+	return timestamp, LogRecordTypeDateTime, nil
 }
 
 type ConvertDiv struct {
 	Divisor float64
 }
 
-func (c ConvertDiv) Convert(a any) (any, LogRecordType) {
-	return float64(a.(int64)) / c.Divisor, LogRecordTypeFloat64
+func (c ConvertDiv) Convert(a any) (any, LogRecordType, error) {
+	return float64(a.(int64)) / c.Divisor, LogRecordTypeFloat64, nil
 }
 
 type ConvertRegexpReplace struct {
@@ -109,6 +108,6 @@ type ConvertRegexpReplace struct {
 	Replacer string
 }
 
-func (c ConvertRegexpReplace) Convert(a any) (any, LogRecordType) {
-	return c.RegExp.ReplaceAllString(a.(string), c.Replacer), LogRecordTypeString
+func (c ConvertRegexpReplace) Convert(a any) (any, LogRecordType, error) {
+	return c.RegExp.ReplaceAllString(a.(string), c.Replacer), LogRecordTypeString, nil
 }

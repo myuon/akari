@@ -22,7 +22,7 @@ type ParseOption struct {
 	HashSeed maphash.Seed
 }
 
-func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
+func Parse(options ParseOption, r io.Reader, logger DebugLogger) (LogRecords, error) {
 	scanner := bufio.NewScanner(r)
 
 	hash := maphash.Hash{}
@@ -71,7 +71,12 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 			// Default type is string
 			resultTypes[column.Name] = LogRecordTypeString
 			for _, converter := range column.Converters {
-				valueAny, resultTypes[column.Name] = converter.Convert(valueAny)
+				v, t, err := converter.Convert(valueAny)
+				if err != nil {
+					return LogRecords{}, fmt.Errorf("Failed to convert %v (%w)", valueAny, err)
+				}
+
+				valueAny, resultTypes[column.Name] = v, t
 			}
 
 			for _, columnKey := range options.Keys {
@@ -102,5 +107,5 @@ func Parse(options ParseOption, r io.Reader, logger DebugLogger) LogRecords {
 	return LogRecords{
 		Columns: columns,
 		Records: records,
-	}
+	}, nil
 }

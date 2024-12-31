@@ -1,15 +1,20 @@
 package akari
 
 import (
+	"fmt"
 	"hash/maphash"
 	"io"
-	"log"
 )
 
-func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger DebugLogger) TableData {
+func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger DebugLogger) (TableData, error) {
+	columns, err := c.Parser.Columns.Load()
+	if err != nil {
+		return TableData{}, fmt.Errorf("Failed to load columns (%w)", err)
+	}
+
 	parseOptions := ParseOption{
 		RegExp:   c.Parser.RegExp,
-		Columns:  c.Parser.Columns.Load(),
+		Columns:  columns,
 		Keys:     c.GroupingKeys,
 		HashSeed: maphash.MakeSeed(),
 	}
@@ -20,7 +25,11 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 	for _, query := range c.Query {
 		var filter *QueryFilter
 		if query.Filter != nil {
-			f := query.Filter.Load()
+			f, err := query.Filter.Load()
+			if err != nil {
+				return TableData{}, fmt.Errorf("Failed to load filter (%w)", err)
+			}
+
 			filter = &f
 		}
 
@@ -52,7 +61,11 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 				}
 				filter := queryOption.Filter
 				if column.Filter != nil {
-					f := column.Filter.Load()
+					f, err := column.Filter.Load()
+					if err != nil {
+						return TableData{}, fmt.Errorf("Failed to load filter (%w)", err)
+					}
+
 					filter = &f
 				}
 
@@ -82,13 +95,19 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 
 	logger.Debug("Loaded options")
 
-	parsed := Parse(parseOptions, r, logger)
+	parsed, err := Parse(parseOptions, r, logger)
+	if err != nil {
+		return TableData{}, fmt.Errorf("Failed to parse (%w)", err)
+	}
 
 	logger.Debug("Parsed")
 
 	prevRows := map[string]LogRecordRows{}
 	if hasPrev {
-		p := Parse(parseOptions, prev, logger)
+		p, err := Parse(parseOptions, prev, logger)
+		if err != nil {
+			return TableData{}, fmt.Errorf("Failed to parse previous (%w)", err)
+		}
 
 		prevRows = p.Records
 	}
@@ -96,7 +115,7 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 	// summarize
 	summary, err := parsed.Summarize(queryOptions, prevRows)
 	if err != nil {
-		log.Fatalf("Failed to summarize: %v", err)
+		return TableData{}, fmt.Errorf("Failed to summarize (%w)", err)
 	}
 
 	logger.Debug("Summarized")
@@ -134,5 +153,5 @@ func Analyze(c AnalyzerConfig, r io.Reader, hasPrev bool, prev io.Reader, logger
 
 	logger.Debug("Formatted")
 
-	return result
+	return result, nil
 }
