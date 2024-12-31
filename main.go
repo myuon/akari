@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"hash/maphash"
 	"html/template"
 	"io"
 	"log"
@@ -35,6 +36,7 @@ var (
 	rootDir        = "."
 	configFilePath = "akari.toml"
 	config         = akari.NewGlobalVar(akari.AkariConfig{})
+	globalSeed     = maphash.MakeSeed()
 )
 
 type FileData struct {
@@ -254,6 +256,7 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 				HasPrev: hasPrev,
 				Prev:    prevLogFile,
 				Logger:  slog.Default(),
+				Seed:    globalSeed,
 			})
 			if err != nil {
 				http.Error(w, "Failed to analyze log", http.StatusInternalServerError)
@@ -331,36 +334,33 @@ func filterViewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := akari.HtmlTableData{}
+	filtered := []akari.SummaryRowCell{}
 	usedAnalyzer := akari.AnalyzerConfig{}
 	for _, analyzer := range config.Load().Analyzers {
 		if logType == analyzer.Name {
 			usedAnalyzer = analyzer
 
-			result, err := akari.Analyze(akari.AnalyzeOptions{
+			summary, err := akari.Summarize(akari.AnalyzeOptions{
 				Config:  analyzer,
 				Source:  logFile,
 				HasPrev: hasPrev,
 				Prev:    prevLogFile,
 				Logger:  slog.Default(),
+				Seed:    globalSeed,
 			})
 			if err != nil {
 				http.Error(w, "Failed to analyze log", http.StatusInternalServerError)
 				return
 			}
 
-			tableData = result.Html(akari.HtmlOptions{
-				ShowRank:    analyzer.ShowRank,
-				DiffHeaders: analyzer.Diffs,
-			})
+			filtered = summary.Rows[key]
 			break
 		}
 	}
 
-	_ = tableData
 	_ = usedAnalyzer
 
-	w.Write([]byte("foo,bar,baz,quux"))
+	w.Write([]byte(fmt.Sprintf("%v", filtered)))
 }
 
 func main() {
@@ -449,6 +449,7 @@ func main() {
 					HasPrev: false,
 					Prev:    nil,
 					Logger:  logger,
+					Seed:    globalSeed,
 				})
 				if err != nil {
 					log.Fatal(err)

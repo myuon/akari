@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-func PrepareOptions(config AnalyzerConfig) (ParseOption, []Query, FormatOptions, error) {
+func PrepareOptions(config AnalyzerConfig, seed maphash.Seed) (ParseOption, []Query, FormatOptions, error) {
 	columns, err := config.Parser.Columns.Load()
 	if err != nil {
 		return ParseOption{}, nil, FormatOptions{}, fmt.Errorf("Failed to load columns (%w)", err)
@@ -16,7 +16,7 @@ func PrepareOptions(config AnalyzerConfig) (ParseOption, []Query, FormatOptions,
 		RegExp:   config.Parser.RegExp,
 		Columns:  columns,
 		Keys:     config.GroupingKeys,
-		HashSeed: maphash.MakeSeed(),
+		HashSeed: seed,
 	}
 	queryOptions := []Query{}
 	formatOptions := FormatOptions{
@@ -102,10 +102,47 @@ type AnalyzeOptions struct {
 	HasPrev bool
 	Prev    io.Reader
 	Logger  DebugLogger
+	Seed    maphash.Seed
+}
+
+func Summarize(options AnalyzeOptions) (SummaryRecords, error) {
+	parseOptions, queryOptions, _, err := PrepareOptions(options.Config, options.Seed)
+	if err != nil {
+		return SummaryRecords{}, fmt.Errorf("Failed to prepare options (%w)", err)
+	}
+
+	options.Logger.Debug("Loaded options")
+
+	parsed, err := Parse(parseOptions, options.Source, options.Logger)
+	if err != nil {
+		return SummaryRecords{}, fmt.Errorf("Failed to parse (%w)", err)
+	}
+
+	options.Logger.Debug("Parsed")
+
+	prevRows := map[string]LogRecordRows{}
+	if options.HasPrev {
+		p, err := Parse(parseOptions, options.Prev, options.Logger)
+		if err != nil {
+			return SummaryRecords{}, fmt.Errorf("Failed to parse previous (%w)", err)
+		}
+
+		prevRows = p.Records
+	}
+
+	// summarize
+	summary, err := parsed.Summarize(queryOptions, prevRows)
+	if err != nil {
+		return SummaryRecords{}, fmt.Errorf("Failed to summarize (%w)", err)
+	}
+
+	options.Logger.Debug("Summarized")
+
+	return summary, nil
 }
 
 func Analyze(options AnalyzeOptions) (TableData, error) {
-	parseOptions, queryOptions, formatOptions, err := PrepareOptions(options.Config)
+	parseOptions, queryOptions, formatOptions, err := PrepareOptions(options.Config, options.Seed)
 	if err != nil {
 		return TableData{}, fmt.Errorf("Failed to prepare options (%w)", err)
 	}
