@@ -2,7 +2,6 @@ package akari
 
 import (
 	"fmt"
-	"log"
 	"slices"
 )
 
@@ -51,35 +50,33 @@ func (f QueryFunction) ResultType(originalType LogRecordType) (LogRecordType, er
 	}
 }
 
-func evaluate[T int | float64](f QueryFunction, values []T) any {
+func evaluate[T int | float64](f QueryFunction, values []T) (any, error) {
 	switch f {
 	case QueryFunctionCount:
-		return len(values)
+		return len(values), nil
 	case QueryFunctionSum:
-		return GetSum(values)
+		return GetSum(values), nil
 	case QueryFunctionAny:
-		return values[0]
+		return values[0], nil
 	case QueryFunctionMean:
-		return GetMean(values)
+		return GetMean(values), nil
 	case QueryFunctionStddev:
-		return GetStddev(values)
+		return GetStddev(values), nil
 	case QueryFunctionMax:
-		return slices.Max(values)
+		return slices.Max(values), nil
 	case QueryFunctionMin:
-		return slices.Min(values)
+		return slices.Min(values), nil
 	case QueryFunctionP50:
-		return GetPercentile(values, 50)
+		return GetPercentile(values, 50), nil
 	case QueryFunctionP90:
-		return GetPercentile(values, 90)
+		return GetPercentile(values, 90), nil
 	case QueryFunctionP95:
-		return GetPercentile(values, 95)
+		return GetPercentile(values, 95), nil
 	case QueryFunctionP99:
-		return GetPercentile(values, 99)
+		return GetPercentile(values, 99), nil
 	default:
-		log.Fatalf("Unknown function: %v", f)
+		return nil, fmt.Errorf("Unknown function: %v", f)
 	}
-
-	return 0
 }
 
 type QueryFilterType string
@@ -139,34 +136,44 @@ func (a Query) Apply(columns LogRecordColumns, records LogRecordRows) (any, LogR
 	switch valueType {
 	case LogRecordTypeInt:
 		values := GetLogRecordsNumbers[int](records, fromIndex)
-		v, err := apply(a.Filter, values)
+		vs, err := apply(a.Filter, values)
 		if err != nil {
 			return nil, "", err
 		}
-		values = v
+		values = vs
+
+		v, err := evaluate(a.Function, values)
+		if err != nil {
+			return nil, "", err
+		}
 
 		t, err := a.Function.ResultType(valueType)
 		if err != nil {
 			return nil, "", err
 		}
 
-		return evaluate(a.Function, values), t, nil
+		return v, t, nil
 	case LogRecordTypeInt64:
 		fallthrough
 	case LogRecordTypeFloat64:
 		values := GetLogRecordsNumbers[float64](records, fromIndex)
-		v, err := apply(a.Filter, values)
+		vs, err := apply(a.Filter, values)
 		if err != nil {
 			return nil, "", err
 		}
-		values = v
+		values = vs
+
+		v, err := evaluate(a.Function, values)
+		if err != nil {
+			return nil, "", err
+		}
 
 		t, err := a.Function.ResultType(valueType)
 		if err != nil {
 			return nil, "", err
 		}
 
-		return evaluate(a.Function, values), t, nil
+		return v, t, nil
 	case LogRecordTypeString:
 		values := records.GetStrings(fromIndex)
 

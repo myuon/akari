@@ -229,7 +229,8 @@ func viewFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	logFile, err := os.Open(filePath)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, "Failed to open file", http.StatusInternalServerError)
+		return
 	}
 
 	prevFilePath := r.URL.Query().Get("prev")
@@ -420,13 +421,13 @@ func main() {
 
 		var c akari.AkariConfig
 		if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
-			log.Fatal(err)
+			slog.Error("Failed to load config", "error", err)
 		}
 
 		config.Store(c)
 
 		if err := watcher.Add(configFilePath); err != nil {
-			log.Fatal(err)
+			slog.Error("Failed to watch config file", "error", err)
 		}
 
 		slog.Debug("Loaded config", "path", configFile, "config", config)
