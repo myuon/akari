@@ -6,36 +6,28 @@ import (
 	"io"
 )
 
-type AnalyzeOptions struct {
-	Config  AnalyzerConfig
-	Source  io.Reader
-	HasPrev bool
-	Prev    io.Reader
-	Logger  DebugLogger
-}
-
-func Analyze(options AnalyzeOptions) (TableData, error) {
-	columns, err := options.Config.Parser.Columns.Load()
+func PrepareOptions(config AnalyzerConfig) (ParseOption, []Query, FormatOptions, error) {
+	columns, err := config.Parser.Columns.Load()
 	if err != nil {
-		return TableData{}, fmt.Errorf("Failed to load columns (%w)", err)
+		return ParseOption{}, nil, FormatOptions{}, fmt.Errorf("Failed to load columns (%w)", err)
 	}
 
 	parseOptions := ParseOption{
-		RegExp:   options.Config.Parser.RegExp,
+		RegExp:   config.Parser.RegExp,
 		Columns:  columns,
-		Keys:     options.Config.GroupingKeys,
+		Keys:     config.GroupingKeys,
 		HashSeed: maphash.MakeSeed(),
 	}
 	queryOptions := []Query{}
 	formatOptions := FormatOptions{
-		Limit: options.Config.Limit,
+		Limit: config.Limit,
 	}
-	for _, query := range options.Config.Query {
+	for _, query := range config.Query {
 		var filter *QueryFilter
 		if query.Filter != nil {
 			f, err := query.Filter.Load()
 			if err != nil {
-				return TableData{}, fmt.Errorf("Failed to load filter (%w)", err)
+				return ParseOption{}, nil, FormatOptions{}, fmt.Errorf("Failed to load filter (%w)", err)
 			}
 
 			filter = &f
@@ -71,7 +63,7 @@ func Analyze(options AnalyzeOptions) (TableData, error) {
 				if column.Filter != nil {
 					f, err := column.Filter.Load()
 					if err != nil {
-						return TableData{}, fmt.Errorf("Failed to load filter (%w)", err)
+						return ParseOption{}, nil, FormatOptions{}, fmt.Errorf("Failed to load filter (%w)", err)
 					}
 
 					filter = &f
@@ -99,6 +91,23 @@ func Analyze(options AnalyzeOptions) (TableData, error) {
 				HumanizeBytes: query.FormatOption.HumanizeBytes,
 			})
 		}
+	}
+
+	return parseOptions, queryOptions, formatOptions, nil
+}
+
+type AnalyzeOptions struct {
+	Config  AnalyzerConfig
+	Source  io.Reader
+	HasPrev bool
+	Prev    io.Reader
+	Logger  DebugLogger
+}
+
+func Analyze(options AnalyzeOptions) (TableData, error) {
+	parseOptions, queryOptions, formatOptions, err := PrepareOptions(options.Config)
+	if err != nil {
+		return TableData{}, fmt.Errorf("Failed to prepare options (%w)", err)
 	}
 
 	options.Logger.Debug("Loaded options")
