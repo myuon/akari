@@ -361,7 +361,9 @@ func main() {
 			line = []byte(strings.SplitN(string(line), "\n", 2)[0])
 		}
 
-		logFile.Seek(0, 0)
+		if _, err := logFile.Seek(0, 0); err != nil {
+			log.Fatal(err)
+		}
 
 		logger.Debug("Read first line", "line", string(line))
 
