@@ -398,23 +398,16 @@ func main() {
 		defer watcher.Close()
 
 		go func() {
-			for {
-				select {
-				case event, ok := <-watcher.Events:
-					if !ok {
-						return
+			for event := range watcher.Events {
+				if event.Name == configFilePath {
+					var c akari.AkariConfig
+					if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
+						log.Fatal(err)
 					}
 
-					if event.Name == configFilePath {
-						var c akari.AkariConfig
-						if _, err := toml.DecodeFile(configFilePath, &c); err != nil {
-							log.Fatal(err)
-						}
+					slog.Info("Config reloaded")
 
-						slog.Info("Config reloaded")
-
-						config.Store(c)
-					}
+					config.Store(c)
 				}
 			}
 		}()
