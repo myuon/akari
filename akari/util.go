@@ -78,3 +78,10 @@ func (g *GlobalVar[T]) Load() T {
 func InsertAt[T any](slice []T, index int, value T) []T {
 	return append(slice[:index], append([]T{value}, slice[index:]...)...)
 }
+
+func StringOr(a, b string) string {
+	if a == "" {
+		return b
+	}
+	return a
+}
