@@ -13,11 +13,18 @@ const getHeatmapColor = (value_) => {
 
 window.addEventListener("load", () => {
   const diffIndexes = [];
+  const colorize = [];
   const headers = document.querySelectorAll("thead th");
   Array.from(headers).forEach((th, i) => {
     if (th instanceof HTMLElement) {
       if (th.dataset.diff) {
         diffIndexes.push(i);
+      }
+      if (th.dataset.colorize) {
+        colorize.push({
+          index: i,
+          max: parseFloat(th.dataset.colorize),
+        });
       }
     }
   });
@@ -35,6 +42,16 @@ window.addEventListener("load", () => {
           // diffのカラムの一つ前のカラムも色をつける
           Array.from(cells)[index - 1].style.backgroundColor =
             getHeatmapColor(value);
+        }
+      }
+    });
+    colorize.forEach((item) => {
+      const cells = tr.children;
+      const cell = Array.from(cells)[item.index];
+      if (cell instanceof HTMLTableCellElement) {
+        const value = parseFloat(cell.dataset.value);
+        if (value !== undefined) {
+          cell.style.backgroundColor = getHeatmapColor(value / item.max);
         }
       }
     });

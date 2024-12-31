@@ -361,6 +361,7 @@ func filterViewHandler(w http.ResponseWriter, r *http.Request) {
 		groupByTimestamp[timestampStr] = append(groupByTimestamp[timestampStr], record)
 	}
 
+	maxCount := 0
 	entries := []struct {
 		Timestamp string
 		Records   akari.LogRecordRows
@@ -373,6 +374,10 @@ func filterViewHandler(w http.ResponseWriter, r *http.Request) {
 			Timestamp: timestamp,
 			Records:   records,
 		})
+
+		if len(records) > maxCount {
+			maxCount = len(records)
+		}
 	}
 
 	slices.SortStableFunc(entries, func(a, b struct {
@@ -382,8 +387,70 @@ func filterViewHandler(w http.ResponseWriter, r *http.Request) {
 		return strings.Compare(a.Timestamp, b.Timestamp)
 	})
 
-	for _, pair := range entries {
-		fmt.Fprintf(w, "%v: %v\n", pair.Timestamp, len(pair.Records))
+	tableHeaders := []akari.HtmlTableHeader{}
+	tableHeaders = append(tableHeaders, akari.HtmlTableHeader{
+		Text: "Count",
+		Attributes: map[string]string{
+			"data-colorize": fmt.Sprintf("%v", maxCount),
+		},
+	})
+	for _, column := range columns {
+		tableHeaders = append(tableHeaders, akari.HtmlTableHeader{
+			Text: column.Name,
+		})
+	}
+
+	tableRows := []akari.HtmlTableRow{}
+	for _, entry := range entries {
+		cells := []akari.HtmlTableCell{}
+
+		row := entry.Records[0]
+		cells = append(cells, akari.HtmlTableCell{
+			Text: template.HTML(fmt.Sprintf("%v", len(entry.Records))),
+			Attributes: map[string]string{
+				"data-value": fmt.Sprintf("%v", len(entry.Records)),
+			},
+		})
+		for _, column := range columns {
+			cells = append(cells, akari.HtmlTableCell{
+				Text: template.HTML(fmt.Sprintf("%v", row[columns.GetIndex(column.Name)])),
+			})
+		}
+
+		tableRows = append(tableRows, akari.HtmlTableRow{
+			Cells: cells,
+		})
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err = templateFiles.ExecuteTemplate(w, "filter.html", map[string]any{
+		"Title":   filePath,
+		"LogType": logType,
+		"Config":  usedAnalyzer,
+		"TableData": akari.HtmlTableData{
+			Headers: tableHeaders,
+			Rows:    tableRows,
+		},
+		"toStyle": func(style map[string]string) string {
+			result := []string{}
+			for key, value := range style {
+				result = append(result, fmt.Sprintf("%v:%v", key, value))
+			}
+
+			return strings.Join(result, ";")
+		},
+		"toAttrs": func(attrs map[string]string) template.HTMLAttr {
+			result := []string{}
+			for key, value := range attrs {
+				result = append(result, fmt.Sprintf(`%v="%v"`, key, value))
+			}
+
+			return template.HTMLAttr(strings.Join(result, " "))
+		},
+	}); err != nil {
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		log.Println("Template execution error:", err)
+		return
 	}
 }
 
