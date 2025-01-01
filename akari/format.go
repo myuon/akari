@@ -1,7 +1,9 @@
 package akari
 
 import (
+	"cmp"
 	"fmt"
+	"log/slog"
 	"slices"
 )
 
@@ -64,25 +66,31 @@ func (r *SummaryRecordKeyPairs) SortBy(options SortByOptions) {
 	records := *r
 
 	slices.SortStableFunc(records.Entries, func(a, b SummaryRecordKeyPair) int {
+		sortingKeys := []int{}
 		for _, sortKey := range options.SortKeyIndexes {
-			valueA, _ := a.Record[sortKey].Value.(float64)
+			valueA := a.Record[sortKey].Value
 			if options.UsePrev {
-				valueA, _ = a.Record[sortKey].PrevValue.(float64)
+				valueA = a.Record[sortKey].PrevValue
 			}
 
-			valueB, _ := b.Record[sortKey].Value.(float64)
+			valueB := b.Record[sortKey].Value
 			if options.UsePrev {
-				valueB, _ = b.Record[sortKey].PrevValue.(float64)
+				valueB = b.Record[sortKey].PrevValue
 			}
 
-			if valueA > valueB {
-				return -1
-			} else if valueA < valueB {
-				return 1
+			switch valueA.(type) {
+			case int:
+				sortingKeys = append(sortingKeys, cmp.Compare(valueB.(int), valueA.(int)))
+			case float64:
+				sortingKeys = append(sortingKeys, cmp.Compare(valueB.(float64), valueA.(float64)))
+			case string:
+				sortingKeys = append(sortingKeys, cmp.Compare(valueB.(string), valueA.(string)))
+			default:
+				slog.Error("Unsupported type for sorting")
 			}
 		}
 
-		return 0
+		return cmp.Or(sortingKeys...)
 	})
 
 	*r = records

@@ -96,7 +96,7 @@ func (d TableData) Write(w io.Writer) {
 			if val, ok := rightAligned[i]; ok && val {
 				fmt.Fprintf(w, "%*s", widths[i], cell)
 			} else {
-				fmt.Fprintf(w, "%-*s", widths[i], cell)
+				fmt.Fprint(w, cell)
 			}
 			if i < len(row)-1 {
 				fmt.Fprint(w, "  ")

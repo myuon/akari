@@ -1,7 +1,7 @@
 [[analyzers]]
 name = "nginx"
 groupingKeys = ["Method", "Url", "Protocol"]
-sortKeys = ["Total"]
+sortKeys = ["Total", "Method", "Url"]
 limit = 100
 diffs = ["Count", "Total", "Mean"]
 showRank = true

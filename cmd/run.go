@@ -15,6 +15,7 @@ type RunOptions struct {
 	ConfigFile string
 	LogFile    string
 	GlobalSeed uint64
+	Writer     io.Writer
 }
 
 func Run(options RunOptions) error {
@@ -80,7 +81,7 @@ func Run(options RunOptions) error {
 
 	logger.Debug("Analyzed log")
 
-	tableData.Write(os.Stdout)
+	tableData.Write(options.Writer)
 
 	logger.Debug("Printed table")
 

@@ -90,8 +90,9 @@ func main() {
 	} else if runCommand.Command.Happened() {
 		if err := cmd.Run(cmd.RunOptions{
 			ConfigFile: akari.StringOr(*runCommand.ConfigFile, defaultConfigPath),
-			LogFile:    *runCommand.ConfigFile,
+			LogFile:    *runCommand.LogFile,
 			GlobalSeed: globalSeed,
+			Writer:     os.Stdout,
 		}); err != nil {
 			log.Fatal(err)
 		}

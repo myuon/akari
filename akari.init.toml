@@ -1,63 +1,49 @@
 [[analyzers]]
 name = "nginx"
 groupingKeys = ["Method", "Url", "Protocol"]
-sortKeys = ["Total"]
+sortKeys = ["Total", "Url"]
 limit = 100
 diffs = ["Count", "Total", "Mean"]
 showRank = true
 
 [analyzers.parser]
-regexp = '''^(\S+) - (\S+) \[([^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''
-
-[[analyzers.parser.columns]]
-name = "Method"
-
-[[analyzers.parser.columns]]
-name = "Url"
-specifier.name = "Url"
-converters = [
-  { type = "queryParams", options = { replacer = "*" } },
-  { type = "regexp", options = { replacer = "(ulid)", pattern = '''[0-9a-zA-Z]{26}''' } },
-  { type = "regexp", options = { replacer = "(uuid)", pattern = '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''' } },
-  # { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
-  # { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
+regexp = '''^(\S+) - (\S+) \[(?P<Timestamp>[^\]]+)\] "(?P<Method>\S+) (?P<Url>\S+) (?P<Protocol>[^"]+)" (?P<Status>\d+) (?P<Bytes>\d+) "([^"]+)" "(?P<UserAgent>[^"]+)" (?P<ResponseTime>\S+)$'''
+columns = [
+  { name = "Method" },
+  { name = "Url", converters = [
+    { type = "queryParams", options = { replacer = "*" } },
+    { type = "regexp", options = { replacer = "(ulid)", pattern = '''[0-9a-zA-Z]{26}''' } },
+    { type = "regexp", options = { replacer = "(uuid)", pattern = '''[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}''' } },
+    { type = "regexp", options = { replacer = "/assets/*", pattern = '''/assets/.*''' } },
+    { type = "regexp", options = { replacer = "/images/*", pattern = '''/images/.*''' } },
+  ] },
+  { name = "Protocol" },
+  { name = "Timestamp" },
+  { name = "Status", converters = [
+    { type = "parseInt" },
+  ] },
+  { name = "Bytes", converters = [
+    { type = "parseInt" },
+  ] },
+  { name = "UserAgent" },
+  { name = "ResponseTime", converters = [
+    { type = "parseFloat64" },
+  ] },
 ]
 
-[[analyzers.parser.columns]]
-name = "Protocol"
-
-[[analyzers.parser.columns]]
-name = "Status"
-converters = [{ type = "parseInt" }]
-
-[[analyzers.parser.columns]]
-name = "Bytes"
-converters = [{ type = "parseInt" }]
-
-[[analyzers.parser.columns]]
-name = "UserAgent"
-
-[[analyzers.parser.columns]]
-name = "ResponseTime"
-converters = [{ type = "parseFloat64" }]
-
-
-[[analyzers.query]]
-name = "Count"
-from = "Url"
-function = "count"
 
 [[analyzers.query]]
 from = "ResponseTime"
 columns = [
+  { name = "Count", function = "count" },
   { name = "Total", function = "sum" },
   { name = "Mean", function = "mean" },
-  { name = "Stddev", function = "stddev" },
+  # { name = "Stddev", function = "stddev" },
   { name = "Min", function = "min" },
   { name = "P50", function = "p50" },
-  { name = "P90", function = "p90" },
+  # { name = "P90", function = "p90" },
   { name = "P95", function = "p95" },
-  { name = "P99", function = "p99" },
+  # { name = "P99", function = "p99" },
   { name = "Max", function = "max" },
 ]
 
@@ -77,12 +63,12 @@ formatOption = { alignment = "right", humanizeBytes = true }
 columns = [
   { name = "TotalBs", function = "sum" },
   { name = "MeanBs", function = "mean" },
-  { name = "MinBs", function = "min" },
-  { name = "MaxBs", function = "max" },
+  # { name = "MinBs", function = "min" },
+  # { name = "MaxBs", function = "max" },
 ]
 
-[[analyzers.query]]
-from = "Protocol"
+# [[analyzers.query]]
+# from = "Protocol"
 
 [[analyzers.query]]
 from = "Method"
