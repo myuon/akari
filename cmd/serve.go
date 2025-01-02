@@ -123,9 +123,11 @@ func listFiles(root string) ([]FileData, error) {
 }
 
 func logGroupHandler(w http.ResponseWriter, r *http.Request) {
+	serverData := UseServerData(r)
+
 	dir := r.URL.Query().Get("dir")
 	if dir == "" {
-		dir, _ = os.Getwd()
+		dir = serverData.LogDir
 	}
 
 	files, err := listFiles(dir)
@@ -170,8 +172,6 @@ func logGroupHandler(w http.ResponseWriter, r *http.Request) {
 	slices.SortStableFunc(entries, func(a, b PageDataFile) int {
 		return strings.Compare(b.DirPath, a.DirPath)
 	})
-
-	serverData := UseServerData(r)
 
 	pageData := PageData{
 		Title: "Akari",
@@ -425,6 +425,7 @@ const contextKey ContextKey = "serverData"
 type ServerData struct {
 	TemplateFiles *template.Template
 	HashSeed      uint64
+	LogDir        string
 }
 
 func withServerData(next http.Handler, data ServerData) http.Handler {
@@ -499,6 +500,7 @@ func Serve(options ServeOptions) error {
 		withServerData(mux, ServerData{
 			TemplateFiles: options.TemplateFiles,
 			HashSeed:      options.HashSeed,
+			LogDir:        options.LogDir,
 		}),
 	); err != nil {
 		slog.Error("Failed to start server", "error", err)

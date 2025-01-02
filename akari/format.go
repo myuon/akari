@@ -78,6 +78,12 @@ func (r *SummaryRecordKeyPairs) SortBy(options SortByOptions) {
 				valueB = b.Record[sortKey].PrevValue
 			}
 
+			if valueA == nil {
+				return 1
+			} else if valueB == nil {
+				return -1
+			}
+
 			switch valueA.(type) {
 			case int:
 				sortingKeys = append(sortingKeys, cmp.Compare(valueB.(int), valueA.(int)))
