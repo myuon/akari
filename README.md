@@ -6,6 +6,12 @@ Akari is a customizable log analyzer/viewer.
 
 ![2.png](./misc/2.png)
 
+## Features
+
+- Fully customizable via TOML configuration file.
+- Web & CLI interface.
+- Show differences between the previous log file.
+
 ## Install
 
 ```sh
