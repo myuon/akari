@@ -202,6 +202,18 @@ from = "Url"
       - `end`: The end value.
 - `columns`: You can add multiple columns to the query at once.
 
+## Architecture (What is Parser and Query?)
+
+Akari has the following phases:
+
+- Parse: Parse the log file and extract the columns.
+- Grouping: Group the log records using `groupingKeys`.
+- Summarize: Calculate the statistics using the `columns` and `function` in query configurations. This phase will create the table data to show.
+- Sort: Sort the table data using `sortKeys`.
+- Format: Format the table data to show.
+
+Parser is used in the Parse phase and Query is used in the Summarize phase.
+
 ## Images
 
 ![1.png](./misc/1.png)
